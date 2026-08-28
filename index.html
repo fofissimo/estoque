@@ -185,7 +185,8 @@ const CATEGORIAS = [
     id: "bebidas",
     nome: "Bebidas",
     itens: [
-      { id: "agua", nome: "Água" },
+      { id: "agua-com-gas", nome: "Água com gás" },
+      { id: "agua-sem-gas", nome: "Água sem gás" },
     ],
   },
 ];
@@ -548,7 +549,7 @@ function Icon({ name, size = 16, color = "currentColor" }) {
 
 function ItemIcon({ id, size = 22 }) {
   const box = { width: size, height: size, viewBox: "0 0 24 24" };
-  if (id === "agua") {
+  if (id === "agua-com-gas" || id === "agua-sem-gas") {
     return (
       <svg {...box}>
         <path d="M12 3C12 3 6 11.2 6 15.5A6 6 0 0 0 18 15.5C18 11.2 12 3 12 3Z" fill="#6FA8C9" />
