@@ -165,34 +165,18 @@ const sansArredondado = "'Baloo 2', ui-rounded, ui-sans-serif, system-ui, sans-s
 
 const CATEGORIAS = [
   {
-    id: "salgados",
-    nome: "Salgados",
+    id: "produtos",
+    nome: "Produtos",
     itens: [
-      { id: "pao-de-queijo", nome: "Pão de queijo" },
-      { id: "empada-alho-poro", nome: "Empada de alho-poró" },
-      { id: "empada-carne-seca", nome: "Empada de carne seca" },
-      { id: "croissant", nome: "Croissant" },
-    ],
-  },
-  {
-    id: "bolos",
-    nome: "Bolos",
-    itens: [
-      { id: "bolinho-nutella", nome: "Bolinho de Nutella" },
-    ],
-  },
-  {
-    id: "bebidas",
-    nome: "Bebidas",
-    itens: [
-      { id: "agua-com-gas", nome: "Água com gás" },
-      { id: "agua-sem-gas", nome: "Água sem gás" },
+      { id: "pao-de-queijo", nome: "Pão de queijo", codigoPDV: "3226" },
+      { id: "agua-com-gas", nome: "Água com gás", codigoPDV: "3005" },
+      { id: "agua-sem-gas", nome: "Água sem gás", codigoPDV: "3004" },
     ],
   },
 ];
 
-// Lista simples, na mesma ordem das categorias — usada em todo o resto do
-// código (cálculos, ciclo automático, confronto etc.) exatamente como antes.
+// Lista única dos produtos ativos — usada em todo o resto do
+// código (cálculos, ciclo automático, confronto e importação do PDV).
 const ITEMS = CATEGORIAS.flatMap((c) => c.itens);
 
 let usuarioAtualNome = "";
@@ -330,87 +314,51 @@ function abrirDataUrlEmNovaAba(dataUrl, nomeArquivo) {
   }
 }
 
-// Procura, nas primeiras linhas, a linha de cabeçalho com as colunas "produto" e "numvendas"
+// Importação do PDV: usa exclusivamente o código do produto para identificar
+// os 3 produtos cadastrados no sistema e a coluna "quantidade" como vendas reais.
+// Nunca faz correspondência parcial por nome e nunca usa "numvendas".
 function encontrarColunasPDV(linhas) {
-  for (let i = 0; i < Math.min(linhas.length, 6); i++) {
+  for (let i = 0; i < Math.min(linhas.length, 10); i++) {
     const linha = linhas[i] || [];
-    let colProduto = -1, colQtd = -1;
+    let colCodigo = -1, colQuantidade = -1;
     linha.forEach((c, idx) => {
       const chave = normalizarChave(c);
-      if (colProduto === -1 && chave.includes("produto")) colProduto = idx;
-      if (colQtd === -1 && chave.includes("numvendas")) colQtd = idx;
+      if (colCodigo === -1 && chave === "codigo") colCodigo = idx;
+      if (colQuantidade === -1 && chave === "quantidade") colQuantidade = idx;
     });
-    if (colProduto !== -1 && colQtd !== -1) return { headerRow: i, colProduto, colQtd };
+    if (colCodigo !== -1 && colQuantidade !== -1) return { headerRow: i, colCodigo, colQuantidade };
   }
   return null;
 }
 
-// Modo genérico: procura a coluna de quantidade dando prioridade a "num vendas" / "vendas"
-// antes de cair em termos genéricos como "quantidade", que podem se referir a outra coisa na planilha
-function encontrarColunaQuantidadeGenerica(linhas) {
-  const gruposPrioridade = [
-    ["numvendas"],
-    ["vendas"],
-    ["qtd", "quantidade", "qtde", "quant", "unid"],
-  ];
-  for (const grupo of gruposPrioridade) {
-    for (let i = 0; i < Math.min(linhas.length, 5); i++) {
-      const linha = linhas[i] || [];
-      for (let c = 0; c < linha.length; c++) {
-        const norm = normalizarChave(linha[c]);
-        if (grupo.some((p) => norm.includes(p))) return c;
-      }
-    }
-  }
-  return null;
+function normalizarCodigoPDV(valor) {
+  if (valor === null || valor === undefined || valor === "") return "";
+  if (typeof valor === "number") return String(Math.trunc(valor));
+  return String(valor).trim().replace(/\.0+$/, "");
 }
 
-// Lê as linhas da planilha e tenta casar cada item cadastrado com uma linha,
-// usando as colunas "produto" e "numvendas" quando existem; senão cai no modo genérico
 function processarPlanilhaPDV(linhas) {
-  const resultado = {};
-  ITEMS.forEach((item) => { resultado[item.id] = null; });
-
+  const resultado = Object.fromEntries(ITEMS.map((item) => [item.id, null]));
   const colunas = encontrarColunasPDV(linhas);
+  if (!colunas) throw new Error("A planilha precisa conter as colunas codigo e quantidade.");
 
-  if (colunas) {
-    for (let i = colunas.headerRow + 1; i < linhas.length; i++) {
-      const linha = linhas[i] || [];
-      const nomeProduto = normalizarTexto(linha[colunas.colProduto]);
-      if (!nomeProduto) continue;
-      const qtdRaw = linha[colunas.colQtd];
-      const qtd = typeof qtdRaw === "number" ? qtdRaw : parseFloat(qtdRaw);
-      if (isNaN(qtd)) continue;
-      ITEMS.forEach((item) => {
-        const nomeItem = normalizarTexto(item.nome);
-        if (nomeProduto.includes(nomeItem) || nomeItem.includes(nomeProduto)) {
-          resultado[item.id] = (resultado[item.id] || 0) + qtd;
-        }
-      });
-    }
-    return resultado;
+  const porCodigo = Object.fromEntries(
+    ITEMS.map((item) => [normalizarCodigoPDV(item.codigoPDV), item.id])
+  );
+
+  for (let i = colunas.headerRow + 1; i < linhas.length; i++) {
+    const linha = linhas[i] || [];
+    const codigo = normalizarCodigoPDV(linha[colunas.colCodigo]);
+    if (!codigo || !porCodigo[codigo]) continue;
+
+    const qtdRaw = linha[colunas.colQuantidade];
+    const qtd = typeof qtdRaw === "number" ? qtdRaw : parseFloat(String(qtdRaw).replace(",", "."));
+    if (Number.isNaN(qtd)) continue;
+
+    const itemId = porCodigo[codigo];
+    resultado[itemId] = (resultado[itemId] || 0) + qtd;
   }
 
-  // Modo genérico (planilha sem as colunas "produto"/"numvendas" reconhecíveis)
-  const colQtd = encontrarColunaQuantidadeGenerica(linhas);
-  linhas.forEach((linhaBruta) => {
-    const linha = linhaBruta || [];
-    const textosLinha = linha.map((c) => normalizarTexto(c));
-    ITEMS.forEach((item) => {
-      const nomeItem = normalizarTexto(item.nome);
-      const bateu = textosLinha.some((t) => t.length > 2 && (t.includes(nomeItem) || nomeItem.includes(t)));
-      if (!bateu) return;
-      let qtd = null;
-      if (colQtd !== null && typeof linha[colQtd] === "number") {
-        qtd = linha[colQtd];
-      } else {
-        for (const c of linha) {
-          if (typeof c === "number") { qtd = c; break; }
-        }
-      }
-      if (qtd !== null) resultado[item.id] = (resultado[item.id] || 0) + qtd;
-    });
-  });
   return resultado;
 }
 
