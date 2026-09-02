@@ -1393,7 +1393,7 @@ function UltimoConfronto({ recarregarChave }) {
         <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: sans, fontSize: 12, color: r.status === "alerta" ? danger : ink }}>
           <span style={{ fontWeight: 600 }}>{nomeDoItem(r.item_id)}</span>
           {r.status === "alerta" ? (
-            <span style={{ fontWeight: 700 }}>inicial {r.estoque_esperado}, atual {r.estoque_contado} (dif. {r.diferenca > 0 ? "+" : ""}{r.diferenca})</span>
+            <span style={{ color: danger, fontWeight: 700 }}>Inconsistencia: {r.diferenca < 0 ? `faltam ${Math.abs(r.diferenca)}` : `sobram ${r.diferenca}`}</span>
           ) : (
             <span style={{ color: good, fontWeight: 700 }}>OK</span>
           )}
@@ -1837,9 +1837,9 @@ function Confronto() {
                   <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: sans, fontSize: 12, color: r.status === "alerta" ? danger : ink }}>
                     <span style={{ fontWeight: 600 }}>{nomeDoItem(r.item_id)}</span>
                     {r.status === "alerta" ? (
-                      <span style={{ fontWeight: 700 }}>congelado {r.estoque_esperado} × inicial+vendas {r.estoque_contado} — INCONSISTÊNCIA</span>
+                      <span style={{ color: danger, fontWeight: 700 }}>Inconsistencia: {r.diferenca < 0 ? `faltam ${Math.abs(r.diferenca)}` : `sobram ${r.diferenca}`}</span>
                     ) : (
-                      <span style={{ color: good, fontWeight: 700 }}>OK — {r.estoque_esperado} = {r.estoque_contado}</span>
+                      <span style={{ color: good, fontWeight: 700 }}>OK</span>
                     )}
                   </div>
                 ))}
