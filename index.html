@@ -447,6 +447,14 @@ function Icon({ name, size = 16, color = "currentColor" }) {
       </svg>
     );
   }
+  if (name === "codigos") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 5v14 M7 5v14 M10 5v14 M14 5v14 M17 5v14 M20 5v14" />
+        <path d="M4 8h16 M4 16h16" />
+      </svg>
+    );
+  }
   if (name === "tabEstoque") {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1863,7 +1871,7 @@ const TABS = [
   { id: "financeiro", label: "Vendas", icone: "tabVendas" },
   { id: "confronto", label: "Confronto", icone: "tabConfronto" },
   { id: "historico", label: "Histórico", icone: "historico" },
-  { id: "admin", label: "Códigos", icone: "historico" },
+  { id: "admin", label: "Códigos", icone: "codigos" },
 ];
 
 function Codigos() {
