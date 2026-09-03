@@ -1402,12 +1402,15 @@ function UltimoConfronto({ recarregarChave }) {
       .from("confrontos")
       .select("*")
       .order("executado_em", { ascending: false })
-      .limit(ITEMS.length)
+      .limit(100)
       .then(({ data, error }) => {
         if (!ativo) return;
         if (error) { setErro(true); setCarregando(false); return; }
-        if (!data || data.length === 0) { setGrupo(null); setErro(false); setCarregando(false); return; }
-        setGrupo({ data_referencia: data[0].data_referencia, executado_em: data[0].executado_em, itens: data });
+        const validos = (data || []).filter(r => ITEMS.some(item => item.id === r.item_id));
+        if (validos.length === 0) { setGrupo(null); setErro(false); setCarregando(false); return; }
+        const dataMaisRecente = validos[0].data_referencia;
+        const itensValidos = validos.filter(r => r.data_referencia === dataMaisRecente);
+        setGrupo({ data_referencia: dataMaisRecente, executado_em: itensValidos[0].executado_em, itens: itensValidos });
         setErro(false);
         setCarregando(false);
       });
@@ -1429,7 +1432,7 @@ function UltimoConfronto({ recarregarChave }) {
         <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: sans, fontSize: 12, color: r.status === "alerta" ? danger : ink }}>
           <span style={{ fontWeight: 600 }}>{nomeDoItem(r.item_id)}</span>
           {r.status === "alerta" ? (
-            <span style={{ fontWeight: 700 }}>inicial {r.estoque_esperado}, atual {r.estoque_contado} (dif. {r.diferenca > 0 ? "+" : ""}{r.diferenca})</span>
+            <span style={{ fontWeight: 700 }}>{r.diferenca < 0 ? `Faltam ${Math.abs(r.diferenca)}` : `Sobram ${r.diferenca}`}</span>
           ) : (
             <span style={{ color: good, fontWeight: 700 }}>OK</span>
           )}
@@ -1795,6 +1798,7 @@ function Confronto() {
 
   const grupos = {};
   confrontos.forEach(r => {
+    if (!ITEMS.some(item => item.id === r.item_id)) return;
     if (!grupos[r.data_referencia]) grupos[r.data_referencia] = [];
     grupos[r.data_referencia].push(r);
   });
@@ -1813,7 +1817,7 @@ function Confronto() {
         Automático: congelamento às 23:30 e confronto às 10:00 do dia seguinte.
       </div>
       <div style={{ fontFamily: sans, fontSize: 10.5, color: inkSoft, textAlign: "center", background: "#F7F2EC", borderRadius: 8, padding: "7px 10px" }}>
-        Fórmula do congelamento: <b>estoque inicial + entradas − perdas</b>. Fórmula do confronto: <b>estoque inicial do dia + vendas</b> comparado ao congelamento anterior. Se diferente, acusa <b>INCONSISTÊNCIA</b>.
+        Confrontos automáticos: resultado por produto.
       </div>
 
       <div style={{ height: 1, background: line, margin: "2px 0" }} />
@@ -1873,9 +1877,9 @@ function Confronto() {
                   <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: sans, fontSize: 12, color: r.status === "alerta" ? danger : ink }}>
                     <span style={{ fontWeight: 600 }}>{nomeDoItem(r.item_id)}</span>
                     {r.status === "alerta" ? (
-                      <span style={{ fontWeight: 700 }}>congelado {r.estoque_esperado} × inicial+vendas {r.estoque_contado} — INCONSISTÊNCIA</span>
+                      <span style={{ fontWeight: 700 }}>{r.diferenca < 0 ? `Faltam ${Math.abs(r.diferenca)}` : `Sobram ${r.diferenca}`}</span>
                     ) : (
-                      <span style={{ color: good, fontWeight: 700 }}>OK — {r.estoque_esperado} = {r.estoque_contado}</span>
+                      <span style={{ color: good, fontWeight: 700 }}>OK</span>
                     )}
                   </div>
                 ))}
