@@ -1129,27 +1129,9 @@ function VendasBloqueadas({ carregando = false }) {
   );
 }
 
-function VendasProtegido({ dataInicial, isAdmin = false }) {
-  const [status, setStatus] = useState(isAdmin ? "aberto" : "consultando");
-
-  const verificarHorario = async () => {
-    if (isAdmin) {
-      setStatus("aberto");
-      return;
-    }
-    setStatus("consultando");
-    const agora = await obterHorarioInternetSaoPaulo();
-    setStatus(agora && horarioVendasAberto(agora) ? "aberto" : "fechado");
-  };
-
-  useEffect(() => {
-    verificarHorario();
-    if (isAdmin) return;
-    const timer = setInterval(verificarHorario, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  if (status !== "aberto") return <VendasBloqueadas carregando={status === "consultando"} />;
+function VendasProtegido({ dataInicial }) {
+  // A aba Vendas fica disponível sem restrição de horário.
+  // A permissão de acesso continua sendo controlada pelas permissões do usuário.
   return <Financeiro dataInicial={dataInicial} />;
 }
 
@@ -2342,11 +2324,6 @@ function App() {
           <div style={{flex:1,display:"flex",overflow:"hidden"}}>
             <div style={{width:96,flexShrink:0,background:accentSoft,padding:"14px 8px",display:"flex",flexDirection:"column",gap:10,overflowY:"auto"}}>
               {tabsPermitidas.map(t => <button key={t.id} onClick={async ()=>{
-                if (t.id === "financeiro") {
-                  const agora = await obterHorarioInternetSaoPaulo();
-                  setTab("financeiro");
-                  return;
-                }
                 setTab(t.id);
               }} style={{border:tab===t.id?"1px solid #5A341C":`1.5px solid ${line}`,borderRadius:14,padding:"12px 4px",cursor:"pointer",aspectRatio:"1 / 1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,background:tab===t.id?"linear-gradient(135deg,#5A341C,#7A4A22)":card,color:tab===t.id?"#fff":accent,boxShadow:tab===t.id?"0 4px 10px rgba(90,52,28,0.45)":"0 1px 3px rgba(59,42,30,0.08)"}}>
                 <Icon name={t.icone} size={18} color={tab===t.id?"#fff":accent} />
@@ -2368,7 +2345,7 @@ function App() {
                 {tab==="estoque" && <Estoque dataInicial={hojeStr()} />}
                 {tab==="entradas" && <EntradasProtegido dataInicial={hojeStr()} />}
                 {tab==="perdas" && <PerdasProtegido dataInicial={hojeStr()} />}
-                {tab==="financeiro" && <VendasProtegido dataInicial={hojeStr()} isAdmin={usuario.permissoes.includes("admin")} />}
+                {tab==="financeiro" && <VendasProtegido dataInicial={hojeStr()} />}
                 {tab==="confronto" && <Confronto />}
                 {tab==="historico" && <HistoricoAlteracoes />}
                 {tab==="admin" && <Codigos />}
