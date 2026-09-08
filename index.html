@@ -1151,15 +1151,17 @@ function Entradas({ dataInicial }) {
       {carregando && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Carregando...</div>}
       {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível conectar ao banco de dados.</div>}
       {!carregando && (
-        <ListaPorCategoria>
-          {(item) => (
-            <EntradaRow key={item.id} nome={item.nome} dados={valores[item.id]} iconId={item.id} bloqueado={bloqueado}
-              onChangeQtd={(v) => mudarQtd(item.id, v)}
-              onAnexar={(dataUrl, nome) => anexar(item.id, dataUrl, nome)}
-              onRemoverAnexo={() => removerAnexo(item.id)} />
-          )}
-        </ListaPorCategoria>
-        <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || !alterado} />
+        <>
+          <ListaPorCategoria>
+            {(item) => (
+              <EntradaRow key={item.id} nome={item.nome} dados={valores[item.id]} iconId={item.id} bloqueado={bloqueado}
+                onChangeQtd={(v) => mudarQtd(item.id, v)}
+                onAnexar={(dataUrl, nome) => anexar(item.id, dataUrl, nome)}
+                onRemoverAnexo={() => removerAnexo(item.id)} />
+            )}
+          </ListaPorCategoria>
+          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || !alterado} />
+        </>
       )}
     </div>
   );
