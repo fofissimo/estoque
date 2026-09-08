@@ -912,16 +912,15 @@ function useDiaCarregado(tipo, dataInicial) {
   return { data, setData, valores, setValores, carregando, erro };
 }
 
-function BotaoSalvar({ onSalvar, salvando = false, desabilitado = false, texto = "Salvar" }) {
+function BotaoSalvar({ onSalvar, salvando = false, desabilitado = false }) {
   return (
     <button onClick={onSalvar} disabled={desabilitado || salvando} style={{
-      width: "100%", border: "none", borderRadius: 12, padding: "14px 16px",
+      width: "100%", border: "none", borderRadius: 12, padding: "15px 16px",
       background: "linear-gradient(135deg, #3B7A45, #56A05C)", color: "#fff",
-      fontFamily: sansArredondado, fontWeight: 800, fontSize: 16, letterSpacing: 0.2,
-      cursor: (desabilitado || salvando) ? "default" : "pointer",
-      boxShadow: "0 7px 16px rgba(59,122,69,0.28)", opacity: (desabilitado || salvando) ? 0.72 : 1
+      fontFamily: sansArredondado, fontWeight: 800, fontSize: 17, cursor: (desabilitado || salvando) ? "default" : "pointer",
+      opacity: (desabilitado || salvando) ? 0.7 : 1, boxShadow: "0 7px 16px rgba(59,122,69,0.28)"
     }}>
-      {salvando ? "Salvando..." : texto}
+      {salvando ? "Salvando..." : "Salvar"}
     </button>
   );
 }
@@ -930,24 +929,25 @@ function Contador({ tipo, dataInicial }) {
   const { data, setData, valores, setValores, carregando, erro } = useDiaCarregado(tipo, dataInicial);
   const bloqueado = dataBloqueada(data);
   const [salvando, setSalvando] = useState(false);
-  const [alterado, setAlterado] = useState(false);
+  const [alterados, setAlterados] = useState({});
 
-  useEffect(() => { setAlterado(false); }, [data]);
+  useEffect(() => { setAlterados({}); }, [data]);
 
   const mudar = (id, v) => {
     if (bloqueado) return;
     setValores((prev) => ({ ...prev, [id]: v }));
-    setAlterado(true);
+    setAlterados((prev) => ({ ...prev, [id]: true }));
   };
 
   const salvarTodos = async () => {
-    if (bloqueado || !alterado || salvando) return;
+    const idsAlterados = Object.keys(alterados);
+    if (bloqueado || idsAlterados.length === 0 || salvando) return;
     setSalvando(true);
     try {
-      for (const item of ITEMS) {
-        await salvarRegistro({ item_id: item.id, data, tipo, quantidade: Number(valores[item.id] || 0) });
+      for (const id of idsAlterados) {
+        await salvarRegistro({ item_id: id, data, tipo, quantidade: Number(valores[id] || 0) });
       }
-      setAlterado(false);
+      setAlterados({});
     } finally {
       setSalvando(false);
     }
@@ -965,7 +965,7 @@ function Contador({ tipo, dataInicial }) {
               <ContadorRow key={item.id} nome={item.nome} valor={valores[item.id]} onChange={(v) => mudar(item.id, v)} iconId={item.id} bloqueado={bloqueado} />
             )}
           </ListaPorCategoria>
-          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || !alterado} />
+          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
         </>
       )}
     </div>
@@ -978,7 +978,7 @@ function Estoque({ dataInicial }) {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  const [alterado, setAlterado] = useState(false);
+  const [alterados, setAlterados] = useState({});
 
   const carregar = async () => {
     setErro(false);
@@ -1018,11 +1018,9 @@ function Estoque({ dataInicial }) {
   useEffect(() => {
     setCarregando(true);
     carregar();
-    const timer = setInterval(() => { if (!alterado) carregar(); }, 10000);
+    const timer = setInterval(carregar, 10000);
     return () => clearInterval(timer);
-  }, [data, alterado]);
-
-  useEffect(() => { setAlterado(false); }, [data]);
+  }, [data]);
 
   const mapa = valores || Object.fromEntries(ITEMS.map((i) => [i.id, 0]));
   const bloqueado = dataBloqueada(data);
@@ -1031,17 +1029,18 @@ function Estoque({ dataInicial }) {
     if (bloqueado) return;
     const numero = Math.max(0, parseInt(String(v || "0"), 10) || 0);
     setValores(prev => ({ ...(prev || {}), [id]: numero }));
-    setAlterado(true);
+    setAlterados(prev => ({ ...prev, [id]: true }));
   };
 
   const salvarTodos = async () => {
-    if (bloqueado || !alterado || salvando) return;
+    const idsAlterados = Object.keys(alterados);
+    if (bloqueado || idsAlterados.length === 0 || salvando) return;
     setSalvando(true);
     try {
-      for (const item of ITEMS) {
-        await salvarRegistro({ item_id: item.id, data, tipo: "contagem", quantidade: Number(mapa[item.id] || 0) });
+      for (const id of idsAlterados) {
+        await salvarRegistro({ item_id: id, data, tipo: "contagem", quantidade: Number((valores || {})[id] || 0) });
       }
-      setAlterado(false);
+      setAlterados({});
     } finally {
       setSalvando(false);
     }
@@ -1079,7 +1078,7 @@ function Estoque({ dataInicial }) {
                 </div>
                 <input
                   type="number" min="0" inputMode="numeric" value={v} disabled={bloqueado}
-                  onChange={(e) => { setValores(prev => ({ ...(prev || {}), [item.id]: e.target.value })); setAlterado(true); }}
+                  onChange={(e) => { setValores(prev => ({ ...(prev || {}), [item.id]: e.target.value })); setAlterados(prev => ({ ...prev, [item.id]: true })); }}
                   onBlur={(e) => mudar(item.id, e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
                   style={{
@@ -1092,7 +1091,7 @@ function Estoque({ dataInicial }) {
             );
           }}
         </ListaPorCategoria>
-        <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || !alterado} />
+        <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
         </>
       )}
     </div>
@@ -1103,25 +1102,26 @@ function Entradas({ dataInicial }) {
   const { data, setData, valores, setValores, carregando, erro } = useDiaCarregado("entrada", dataInicial);
   const bloqueado = dataBloqueada(data);
   const [salvando, setSalvando] = useState(false);
-  const [alterado, setAlterado] = useState(false);
+  const [alterados, setAlterados] = useState({});
 
-  useEffect(() => { setAlterado(false); }, [data]);
+  useEffect(() => { setAlterados({}); }, [data]);
 
   const mudarQtd = (id, v) => {
     if (bloqueado) return;
     setValores((prev) => ({ ...prev, [id]: { ...prev[id], qtd: v } }));
-    setAlterado(true);
+    setAlterados((prev) => ({ ...prev, [id]: true }));
   };
 
   const salvarTodos = async () => {
-    if (bloqueado || !alterado || salvando) return;
+    const idsAlterados = Object.keys(alterados);
+    if (bloqueado || idsAlterados.length === 0 || salvando) return;
     setSalvando(true);
     try {
-      for (const item of ITEMS) {
-        const registro = valores[item.id] || { qtd: 0, foto: null, nomeArquivo: null };
-        await salvarRegistro({ item_id: item.id, data, tipo: "entrada", quantidade: Number(registro.qtd || 0), foto_url: registro.foto, nome_arquivo: registro.nomeArquivo });
+      for (const id of idsAlterados) {
+        const registro = valores[id] || { qtd: 0, foto: null, nomeArquivo: null };
+        await salvarRegistro({ item_id: id, data, tipo: "entrada", quantidade: Number(registro.qtd || 0), foto_url: registro.foto, nome_arquivo: registro.nomeArquivo });
       }
-      setAlterado(false);
+      setAlterados({});
     } finally {
       setSalvando(false);
     }
@@ -1162,7 +1162,7 @@ function Entradas({ dataInicial }) {
                 onRemoverAnexo={() => removerAnexo(item.id)} />
             )}
           </ListaPorCategoria>
-          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || !alterado} />
+          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
         </>
       )}
     </div>
@@ -1410,14 +1410,11 @@ function Financeiro({ dataInicial }) {
       {carregando && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Carregando...</div>}
       {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível conectar ao banco de dados.</div>}
       {!carregando && (
-        <>
-          <ListaPorCategoria>
-            {(item) => (
-              <ContadorRow key={item.id} nome={item.nome} valor={valores[item.id]} onChange={(v) => mudar(item.id, v)} iconId={item.id} bloqueado={true} />
-            )}
-          </ListaPorCategoria>
-          <BotaoSalvar onSalvar={() => {}} desabilitado={true} texto="Salvar" />
-        </>
+        <ListaPorCategoria>
+          {(item) => (
+            <ContadorRow key={item.id} nome={item.nome} valor={valores[item.id]} onChange={(v) => mudar(item.id, v)} iconId={item.id} bloqueado={true} />
+          )}
+        </ListaPorCategoria>
       )}
     </div>
   );
