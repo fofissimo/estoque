@@ -912,15 +912,20 @@ function useDiaCarregado(tipo, dataInicial) {
   return { data, setData, valores, setValores, carregando, erro };
 }
 
-function BotaoSalvar({ onSalvar, salvando = false, desabilitado = false }) {
+function BotaoSalvar({ onSalvar, salvando = false, salvoComSucesso = false, desabilitado = false }) {
+  const mostrandoSucesso = !!salvoComSucesso;
   return (
-    <button onClick={onSalvar} disabled={desabilitado || salvando} style={{
+    <button onClick={onSalvar} disabled={desabilitado || salvando || mostrandoSucesso} style={{
       width: "100%", border: "none", borderRadius: 12, padding: "15px 16px",
-      background: "linear-gradient(135deg, #3B7A45, #56A05C)", color: "#fff",
-      fontFamily: sansArredondado, fontWeight: 800, fontSize: 17, cursor: (desabilitado || salvando) ? "default" : "pointer",
-      opacity: (desabilitado || salvando) ? 0.7 : 1, boxShadow: "0 7px 16px rgba(59,122,69,0.28)"
+      background: mostrandoSucesso
+        ? "linear-gradient(135deg, #1976D2, #42A5F5)"
+        : "linear-gradient(135deg, #3B7A45, #56A05C)",
+      color: "#fff", fontFamily: sansArredondado, fontWeight: 800, fontSize: 17,
+      cursor: (desabilitado || salvando || mostrandoSucesso) ? "default" : "pointer",
+      opacity: (desabilitado || salvando) && !mostrandoSucesso ? 0.7 : 1,
+      boxShadow: mostrandoSucesso ? "0 7px 16px rgba(25,118,210,0.28)" : "0 7px 16px rgba(59,122,69,0.28)"
     }}>
-      {salvando ? "Salvando..." : "Salvar"}
+      {mostrandoSucesso ? "Salvo com sucesso!" : (salvando ? "Salvando..." : "Salvar")}
     </button>
   );
 }
@@ -929,6 +934,7 @@ function Contador({ tipo, dataInicial }) {
   const { data, setData, valores, setValores, carregando, erro } = useDiaCarregado(tipo, dataInicial);
   const bloqueado = dataBloqueada(data);
   const [salvando, setSalvando] = useState(false);
+  const [salvoComSucesso, setSalvoComSucesso] = useState(false);
   const [alterados, setAlterados] = useState({});
 
   useEffect(() => { setAlterados({}); }, [data]);
@@ -944,10 +950,16 @@ function Contador({ tipo, dataInicial }) {
     if (bloqueado || idsAlterados.length === 0 || salvando) return;
     setSalvando(true);
     try {
+      let sucesso = true;
       for (const id of idsAlterados) {
-        await salvarRegistro({ item_id: id, data, tipo, quantidade: Number(valores[id] || 0) });
+        const salvo = await salvarRegistro({ item_id: id, data, tipo, quantidade: Number(valores[id] || 0) });
+        if (!salvo) sucesso = false;
       }
-      setAlterados({});
+      if (sucesso) {
+        setAlterados({});
+        setSalvoComSucesso(true);
+        setTimeout(() => setSalvoComSucesso(false), 2000);
+      }
     } finally {
       setSalvando(false);
     }
@@ -965,7 +977,7 @@ function Contador({ tipo, dataInicial }) {
               <ContadorRow key={item.id} nome={item.nome} valor={valores[item.id]} onChange={(v) => mudar(item.id, v)} iconId={item.id} bloqueado={bloqueado} />
             )}
           </ListaPorCategoria>
-          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
+          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} salvoComSucesso={salvoComSucesso} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
         </>
       )}
     </div>
@@ -978,6 +990,7 @@ function Estoque({ dataInicial }) {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [salvoComSucesso, setSalvoComSucesso] = useState(false);
   const [alterados, setAlterados] = useState({});
 
   const carregar = async () => {
@@ -1037,10 +1050,16 @@ function Estoque({ dataInicial }) {
     if (bloqueado || idsAlterados.length === 0 || salvando) return;
     setSalvando(true);
     try {
+      let sucesso = true;
       for (const id of idsAlterados) {
-        await salvarRegistro({ item_id: id, data, tipo: "contagem", quantidade: Number((valores || {})[id] || 0) });
+        const salvo = await salvarRegistro({ item_id: id, data, tipo: "contagem", quantidade: Number((valores || {})[id] || 0) });
+        if (!salvo) sucesso = false;
       }
-      setAlterados({});
+      if (sucesso) {
+        setAlterados({});
+        setSalvoComSucesso(true);
+        setTimeout(() => setSalvoComSucesso(false), 2000);
+      }
     } finally {
       setSalvando(false);
     }
@@ -1091,7 +1110,7 @@ function Estoque({ dataInicial }) {
             );
           }}
         </ListaPorCategoria>
-        <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
+        <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} salvoComSucesso={salvoComSucesso} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
         </>
       )}
     </div>
@@ -1102,6 +1121,7 @@ function Entradas({ dataInicial }) {
   const { data, setData, valores, setValores, carregando, erro } = useDiaCarregado("entrada", dataInicial);
   const bloqueado = dataBloqueada(data);
   const [salvando, setSalvando] = useState(false);
+  const [salvoComSucesso, setSalvoComSucesso] = useState(false);
   const [alterados, setAlterados] = useState({});
 
   useEffect(() => { setAlterados({}); }, [data]);
@@ -1117,11 +1137,17 @@ function Entradas({ dataInicial }) {
     if (bloqueado || idsAlterados.length === 0 || salvando) return;
     setSalvando(true);
     try {
+      let sucesso = true;
       for (const id of idsAlterados) {
         const registro = valores[id] || { qtd: 0, foto: null, nomeArquivo: null };
-        await salvarRegistro({ item_id: id, data, tipo: "entrada", quantidade: Number(registro.qtd || 0), foto_url: registro.foto, nome_arquivo: registro.nomeArquivo });
+        const salvo = await salvarRegistro({ item_id: id, data, tipo: "entrada", quantidade: Number(registro.qtd || 0), foto_url: registro.foto, nome_arquivo: registro.nomeArquivo });
+        if (!salvo) sucesso = false;
       }
-      setAlterados({});
+      if (sucesso) {
+        setAlterados({});
+        setSalvoComSucesso(true);
+        setTimeout(() => setSalvoComSucesso(false), 2000);
+      }
     } finally {
       setSalvando(false);
     }
@@ -1162,7 +1188,7 @@ function Entradas({ dataInicial }) {
                 onRemoverAnexo={() => removerAnexo(item.id)} />
             )}
           </ListaPorCategoria>
-          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
+          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} salvoComSucesso={salvoComSucesso} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
         </>
       )}
     </div>
