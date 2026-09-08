@@ -1063,6 +1063,7 @@ function Estoque({ dataInicial }) {
       {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível carregar o estoque inicial do Supabase.</div>}
 
       {!carregando && !erro && (
+        <>
         <ListaPorCategoria>
           {(item) => {
             const v = Number(mapa[item.id] || 0);
@@ -1092,6 +1093,7 @@ function Estoque({ dataInicial }) {
           }}
         </ListaPorCategoria>
         <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} desabilitado={bloqueado || !alterado} />
+        </>
       )}
     </div>
   );
