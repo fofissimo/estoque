@@ -709,8 +709,10 @@ function DateBarVendas({ data }) {
   );
 }
 
-function ContadorRow({ nome, valor, onChange, onSalvar, iconId, bloqueado }) {
+function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
   const [rascunho, setRascunho] = useState(String(valor ?? 0));
+  const [salvandoItem, setSalvandoItem] = useState(false);
+  const [salvoItem, setSalvoItem] = useState(false);
 
   useEffect(() => {
     setRascunho(String(valor ?? 0));
@@ -724,52 +726,71 @@ function ContadorRow({ nome, valor, onChange, onSalvar, iconId, bloqueado }) {
   };
 
   const salvarItem = async () => {
-    if (bloqueado) return false;
-    const numero = Math.max(0, parseInt(rascunho || "0", 10) || 0);
-    setRascunho(String(numero));
-    return onSalvar(numero);
+    if (bloqueado || salvandoItem || salvoItem || !onSave) return;
+    confirmar();
+    setSalvandoItem(true);
+    try {
+      const sucesso = await onSave(Math.max(0, parseInt(rascunho || "0", 10) || 0));
+      if (sucesso) {
+        setSalvoItem(true);
+        setTimeout(() => setSalvoItem(false), 2000);
+      }
+    } finally {
+      setSalvandoItem(false);
+    }
   };
 
   return (
-    <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, opacity: bloqueado ? 0.6 : 1 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+    <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, opacity: bloqueado ? 0.6 : 1 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
         <ItemIcon id={iconId} />
-        <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</span>
+        <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: ink }}>{nome}</span>
       </div>
 
-      <input
-        type="number"
-        min="0"
-        inputMode="numeric"
-        value={rascunho}
-        disabled={bloqueado}
-        onChange={(e) => setRascunho(e.target.value)}
-        onBlur={confirmar}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-        }}
-        style={{
-          flex: "0 0 72px",
-          width: 72,
-          textAlign: "center",
-          fontFamily: sans,
-          fontWeight: 700,
-          fontSize: 15,
-          border: `1px solid ${line}`,
-          borderRadius: 6,
-          padding: "7px 4px",
-          color: ink,
-          background: bloqueado ? "#f3f3f3" : "#fff"
-        }}
-      />
-      <BotaoSalvarItem onSalvar={salvarItem} desabilitado={bloqueado} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <input
+          type="number"
+          min="0"
+          inputMode="numeric"
+          value={rascunho}
+          disabled={bloqueado}
+          onChange={(e) => setRascunho(e.target.value)}
+          onBlur={confirmar}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+          style={{
+            width: 72,
+            textAlign: "center",
+            fontFamily: sans,
+            fontWeight: 700,
+            fontSize: 15,
+            border: `1px solid ${line}`,
+            borderRadius: 6,
+            padding: "7px 4px",
+            color: ink,
+            background: bloqueado ? "#f3f3f3" : "#fff"
+          }}
+        />
+        <button onClick={salvarItem} disabled={bloqueado || salvandoItem || salvoItem} style={{
+          border: "none", borderRadius: 8, padding: "8px 10px", minWidth: 82,
+          background: salvoItem ? "linear-gradient(135deg, #1976D2, #42A5F5)" : "linear-gradient(135deg, #3B7A45, #56A05C)",
+          color: "#fff", fontFamily: sans, fontWeight: 800, fontSize: 11,
+          cursor: (bloqueado || salvandoItem || salvoItem) ? "default" : "pointer",
+          opacity: bloqueado ? 0.7 : 1
+        }}>
+          {salvoItem ? "Salvo com sucesso!" : (salvandoItem ? "Salvando..." : "Salvar")}
+        </button>
+      </div>
     </div>
   );
 }
-function EntradaRow({ nome, dados, onChangeQtd, onSalvarQtd, onAnexar, onRemoverAnexo, iconId, bloqueado }) {
+function EntradaRow({ nome, dados, onChangeQtd, onSave, alterado, onAnexar, onRemoverAnexo, iconId, bloqueado }) {
   const fileRef = useRef(null);
   const liberado = !!dados.foto;
   const [rascunho, setRascunho] = useState(String(dados?.qtd ?? 0));
+  const [salvandoItem, setSalvandoItem] = useState(false);
+  const [salvoItem, setSalvoItem] = useState(false);
 
   useEffect(() => {
     setRascunho(String(dados?.qtd ?? 0));
@@ -780,6 +801,23 @@ function EntradaRow({ nome, dados, onChangeQtd, onSalvarQtd, onAnexar, onRemover
     const numero = Math.max(0, parseInt(rascunho || "0", 10) || 0);
     setRascunho(String(numero));
     if (numero !== Number(dados?.qtd ?? 0)) onChangeQtd(numero);
+  };
+
+  const salvarItem = async () => {
+    if (bloqueado || !liberado || salvandoItem || salvoItem || !onSave) return;
+    const numero = Math.max(0, parseInt(rascunho || "0", 10) || 0);
+    setRascunho(String(numero));
+    if (numero !== Number(dados?.qtd ?? 0)) onChangeQtd(numero);
+    setSalvandoItem(true);
+    try {
+      const sucesso = await onSave(numero);
+      if (sucesso) {
+        setSalvoItem(true);
+        setTimeout(() => setSalvoItem(false), 2000);
+      }
+    } finally {
+      setSalvandoItem(false);
+    }
   };
 
   // Reduz fotos muito grandes antes de gravá-las no registro do Supabase.
@@ -831,13 +869,6 @@ function EntradaRow({ nome, dados, onChangeQtd, onSalvarQtd, onAnexar, onRemover
     a.remove();
   };
 
-  const salvarItem = async () => {
-    if (bloqueado || !liberado) return false;
-    const numero = Math.max(0, parseInt(rascunho || "0", 10) || 0);
-    setRascunho(String(numero));
-    return onSalvarQtd(numero);
-  };
-
   return (
     <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, opacity: bloqueado ? 0.6 : 1, minWidth: 0, width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -847,6 +878,7 @@ function EntradaRow({ nome, dados, onChangeQtd, onSalvarQtd, onAnexar, onRemover
         </div>
 
         {liberado && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           <input
             type="number"
             min="0"
@@ -872,7 +904,16 @@ function EntradaRow({ nome, dados, onChangeQtd, onSalvarQtd, onAnexar, onRemover
               background: bloqueado ? "#f3f3f3" : "#fff"
             }}
           />
-          <BotaoSalvarItem onSalvar={salvarItem} desabilitado={bloqueado || !liberado} />
+          <button onClick={salvarItem} disabled={bloqueado || !liberado || salvandoItem || salvoItem || !alterado} style={{
+            border: "none", borderRadius: 8, padding: "8px 10px", minWidth: 82,
+            background: salvoItem ? "linear-gradient(135deg, #1976D2, #42A5F5)" : "linear-gradient(135deg, #3B7A45, #56A05C)",
+            color: "#fff", fontFamily: sans, fontWeight: 800, fontSize: 11,
+            cursor: (bloqueado || !liberado || salvandoItem || salvoItem || !alterado) ? "default" : "pointer",
+            opacity: (bloqueado || !alterado) ? 0.6 : 1
+          }}>
+            {salvoItem ? "Salvo com sucesso!" : (salvandoItem ? "Salvando..." : "Salvar")}
+          </button>
+          </div>
         )}
       </div>
 
@@ -949,54 +990,27 @@ function BotaoSalvar({ onSalvar, salvando = false, salvoComSucesso = false, desa
   );
 }
 
-function BotaoSalvarItem({ onSalvar, desabilitado = false }) {
-  const [salvando, setSalvando] = useState(false);
-  const [salvoComSucesso, setSalvoComSucesso] = useState(false);
-
-  const salvar = async () => {
-    if (desabilitado || salvando || salvoComSucesso) return;
-    setSalvando(true);
-    try {
-      const sucesso = await onSalvar();
-      if (sucesso) {
-        setSalvoComSucesso(true);
-        setTimeout(() => setSalvoComSucesso(false), 2000);
-      }
-    } finally {
-      setSalvando(false);
-    }
-  };
-
-  const mostrandoSucesso = !!salvoComSucesso;
-  return (
-    <button onClick={salvar} disabled={desabilitado || salvando || mostrandoSucesso} style={{
-      flex: "0 0 auto", minWidth: 82, border: "none", borderRadius: 8, padding: "8px 9px",
-      background: mostrandoSucesso
-        ? "linear-gradient(135deg, #1976D2, #42A5F5)"
-        : "linear-gradient(135deg, #3B7A45, #56A05C)",
-      color: "#fff", fontFamily: sansArredondado, fontWeight: 800, fontSize: 12,
-      cursor: (desabilitado || salvando || mostrandoSucesso) ? "default" : "pointer",
-      opacity: (desabilitado || salvando) && !mostrandoSucesso ? 0.7 : 1,
-      boxShadow: mostrandoSucesso ? "0 4px 10px rgba(25,118,210,0.22)" : "0 4px 10px rgba(59,122,69,0.22)"
-    }}>
-      {mostrandoSucesso ? "Salvo com sucesso!" : (salvando ? "Salvando..." : "Salvar")}
-    </button>
-  );
-}
-
 function Contador({ tipo, dataInicial }) {
   const { data, setData, valores, setValores, carregando, erro } = useDiaCarregado(tipo, dataInicial);
   const bloqueado = dataBloqueada(data);
+  const [alterados, setAlterados] = useState({});
+
+  useEffect(() => { setAlterados({}); }, [data]);
 
   const mudar = (id, v) => {
     if (bloqueado) return;
     setValores((prev) => ({ ...prev, [id]: v }));
+    setAlterados((prev) => ({ ...prev, [id]: true }));
   };
 
   const salvarItem = async (id, quantidade) => {
     if (bloqueado) return false;
     const salvo = await salvarRegistro({ item_id: id, data, tipo, quantidade: Number(quantidade || 0) });
-    if (salvo) setValores((prev) => ({ ...prev, [id]: Number(quantidade || 0) }));
+    if (salvo) setAlterados((prev) => {
+      const novo = { ...prev };
+      delete novo[id];
+      return novo;
+    });
     return salvo;
   };
 
@@ -1008,15 +1022,7 @@ function Contador({ tipo, dataInicial }) {
       {!carregando && (
         <ListaPorCategoria>
           {(item) => (
-            <ContadorRow
-              key={item.id}
-              nome={item.nome}
-              valor={valores[item.id]}
-              onChange={(v) => mudar(item.id, v)}
-              onSalvar={(quantidade) => salvarItem(item.id, quantidade)}
-              iconId={item.id}
-              bloqueado={bloqueado}
-            />
+            <ContadorRow key={item.id} nome={item.nome} valor={valores[item.id]} onChange={(v) => mudar(item.id, v)} onSave={(v) => salvarItem(item.id, v)} iconId={item.id} bloqueado={bloqueado} />
           )}
         </ListaPorCategoria>
       )}
@@ -1028,12 +1034,11 @@ function Estoque({ dataInicial }) {
   const [valores, setValores] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
+  const [alterados, setAlterados] = useState({});
 
   const carregar = async () => {
     setErro(false);
     try {
-      // Primeiro tenta o valor editável salvo para o dia. Se não existir,
-      // puxa automaticamente o congelamento do dia anterior.
       const { data: registrosIniciais, error: erroInicial } = await sb.from("registros")
         .select("item_id, quantidade")
         .eq("tipo", "contagem")
@@ -1066,6 +1071,7 @@ function Estoque({ dataInicial }) {
 
   useEffect(() => {
     setCarregando(true);
+    setAlterados({});
     carregar();
     const timer = setInterval(carregar, 10000);
     return () => clearInterval(timer);
@@ -1078,13 +1084,17 @@ function Estoque({ dataInicial }) {
     if (bloqueado) return;
     const numero = Math.max(0, parseInt(String(v || "0"), 10) || 0);
     setValores(prev => ({ ...(prev || {}), [id]: numero }));
+    setAlterados(prev => ({ ...prev, [id]: true }));
   };
 
   const salvarItem = async (id, quantidade) => {
     if (bloqueado) return false;
-    const numero = Math.max(0, parseInt(String(quantidade || "0"), 10) || 0);
-    const salvo = await salvarRegistro({ item_id: id, data, tipo: "contagem", quantidade: numero });
-    if (salvo) setValores(prev => ({ ...(prev || {}), [id]: numero }));
+    const salvo = await salvarRegistro({ item_id: id, data, tipo: "contagem", quantidade: Number(quantidade || 0) });
+    if (salvo) setAlterados((prev) => {
+      const novo = { ...prev };
+      delete novo[id];
+      return novo;
+    });
     return salvo;
   };
 
@@ -1105,36 +1115,9 @@ function Estoque({ dataInicial }) {
 
       {!carregando && !erro && (
         <ListaPorCategoria>
-          {(item) => {
-            const v = Number(mapa[item.id] || 0);
-            return (
-              <div key={item.id} style={{
-                background: card, border: `1px solid ${line}`, borderRadius: 10,
-                padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
-                opacity: bloqueado ? 0.6 : 1
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                  <ItemIcon id={item.id} />
-                  <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14, color: ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.nome}</span>
-                </div>
-                <input
-                  type="number" min="0" inputMode="numeric" value={v} disabled={bloqueado}
-                  onChange={(e) => { setValores(prev => ({ ...(prev || {}), [item.id]: e.target.value })); }}
-                  onBlur={(e) => mudar(item.id, e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                  style={{
-                    flex: "0 0 72px", width: 72, textAlign: "center", fontFamily: sans, fontWeight: 800, fontSize: 16,
-                    border: `1px solid ${line}`, borderRadius: 6, padding: "7px 4px",
-                    color: ink, background: bloqueado ? "#f3f3f3" : "#fff"
-                  }}
-                />
-                <BotaoSalvarItem
-                  onSalvar={() => salvarItem(item.id, mapa[item.id])}
-                  desabilitado={bloqueado}
-                />
-              </div>
-            );
-          }}
+          {(item) => (
+            <ContadorRow key={item.id} nome={item.nome} valor={mapa[item.id]} onChange={(v) => mudar(item.id, v)} onSave={(v) => salvarItem(item.id, v)} iconId={item.id} bloqueado={bloqueado} />
+          )}
         </ListaPorCategoria>
       )}
     </div>
@@ -1143,17 +1126,25 @@ function Estoque({ dataInicial }) {
 function Entradas({ dataInicial }) {
   const { data, setData, valores, setValores, carregando, erro } = useDiaCarregado("entrada", dataInicial);
   const bloqueado = dataBloqueada(data);
+  const [alterados, setAlterados] = useState({});
+
+  useEffect(() => { setAlterados({}); }, [data]);
 
   const mudarQtd = (id, v) => {
     if (bloqueado) return;
     setValores((prev) => ({ ...prev, [id]: { ...prev[id], qtd: v } }));
+    setAlterados((prev) => ({ ...prev, [id]: true }));
   };
 
   const salvarItem = async (id, quantidade) => {
     if (bloqueado) return false;
     const registro = valores[id] || { qtd: 0, foto: null, nomeArquivo: null };
-    const salvo = await salvarRegistro({ item_id: id, data, tipo: "entrada", quantidade: Number(quantidade || 0), foto_url: registro.foto, nome_arquivo: registro.nomeArquivo });
-    if (salvo) setValores((prev) => ({ ...prev, [id]: { ...prev[id], qtd: Number(quantidade || 0) } }));
+    const salvo = await salvarRegistro({ item_id: id, data, tipo: "entrada", quantidade: Number(quantidade ?? registro.qtd ?? 0), foto_url: registro.foto, nome_arquivo: registro.nomeArquivo });
+    if (salvo) setAlterados((prev) => {
+      const novo = { ...prev };
+      delete novo[id];
+      return novo;
+    });
     return salvo;
   };
 
@@ -1188,7 +1179,8 @@ function Entradas({ dataInicial }) {
           {(item) => (
             <EntradaRow key={item.id} nome={item.nome} dados={valores[item.id]} iconId={item.id} bloqueado={bloqueado}
               onChangeQtd={(v) => mudarQtd(item.id, v)}
-              onSalvarQtd={(v) => salvarItem(item.id, v)}
+              onSave={(v) => salvarItem(item.id, v)}
+              alterado={!!alterados[item.id]}
               onAnexar={(dataUrl, nome) => anexar(item.id, dataUrl, nome)}
               onRemoverAnexo={() => removerAnexo(item.id)} />
           )}
