@@ -1856,6 +1856,8 @@ function Confronto() {
   const [confrontos, setConfrontos] = useState([]);
   const [congelamentos, setCongelamentos] = useState([]);
   const [abertos, setAbertos] = useState({});
+  const [limiteConfrontos, setLimiteConfrontos] = useState(10);
+  const [limiteCongelamentos, setLimiteCongelamentos] = useState(10);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
 
@@ -1863,8 +1865,8 @@ function Confronto() {
     setErro(false);
     try {
       const [c, f] = await Promise.all([
-        sb.from("confrontos").select("*").order("executado_em", { ascending: false }).limit(Math.max(ITEMS.length * 31, 300)),
-        sb.from("estoque_fechamentos").select("*").not("esperado_congelado_em", "is", null).order("data_referencia", { ascending: false }).limit(31),
+        sb.from("confrontos").select("*").order("executado_em", { ascending: false }).limit(Math.max(ITEMS.length * 101, 1000)),
+        sb.from("estoque_fechamentos").select("*").not("esperado_congelado_em", "is", null).order("data_referencia", { ascending: false }).limit(100),
       ]);
       if (c.error) throw c.error;
       if (f.error) throw f.error;
@@ -1890,6 +1892,8 @@ function Confronto() {
     grupos[r.data_referencia].push(r);
   });
   const diasConfronto = Object.keys(grupos).sort((a,b) => b.localeCompare(a));
+  const confrontosVisiveis = diasConfronto.slice(0, limiteConfrontos);
+  const congelamentosVisiveis = congelamentos.slice(0, limiteCongelamentos);
 
   return (
     <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1910,45 +1914,10 @@ function Confronto() {
       <div style={{ height: 1, background: line, margin: "2px 0" }} />
 
       <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 14, color: ink, textAlign: "center" }}>
-        Estoques congelados
-      </div>
-      {carregando && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Carregando congelamentos...</div>}
-      {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível carregar os dados do confronto.</div>}
-      {!carregando && congelamentos.length === 0 && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Nenhum estoque congelado encontrado.</div>}
-      {congelamentos.map(f => {
-        const aberto = !!abertos[`f-${f.data_referencia}`];
-        return (
-          <div key={f.data_referencia} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button
-              onClick={() => setAbertos(prev => ({ ...prev, [`f-${f.data_referencia}`]: !aberto }))}
-              style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: azul, border: "none", color: "#fff", cursor: "pointer", borderRadius: 10, padding: "10px 14px", fontFamily: sans, fontWeight: 800, fontSize: 13 }}
-            >
-              <span>🔒 Estoque congelado do dia {formatarData(f.data_referencia)}</span>
-              <span style={{ fontSize: 10.5, opacity: .9 }}>{formatarDataHoraCompleta(f.esperado_congelado_em)}</span>
-            </button>
-            {aberto && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                <ListaPorCategoria>
-                  {(item) => {
-                    const v = Number((f.esperado || {})[item.id] || 0);
-                    return <div key={item.id} style={{ background: azulSoft, border: `1px solid ${azul}`, borderRadius: 10, padding: "9px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}><ItemIcon id={item.id} /><span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14, color: ink }}>{item.nome}</span></div>
-                      <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 16, color: azul }}>{v}</span>
-                    </div>;
-                  }}
-                </ListaPorCategoria>
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      <div style={{ height: 1, background: line, margin: "2px 0" }} />
-      <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 14, color: ink, textAlign: "center" }}>
         Confrontos diários
       </div>
-      {!carregando && diasConfronto.length === 0 && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Nenhum confronto executado ainda.</div>}
-      {diasConfronto.map(data => {
+      {!carregando && confrontosVisiveis.length === 0 && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Nenhum confronto executado ainda.</div>}
+      {confrontosVisiveis.map(data => {
         const itens = grupos[data];
         const inconsistente = itens.some(r => r.status === "alerta");
         const aberto = !!abertos[`c-${data}`];
@@ -1976,9 +1945,56 @@ function Confronto() {
           </div>
         );
       })}
+      <div style={{ height: 1, background: line, margin: "2px 0" }} />
+
+      <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 14, color: ink, textAlign: "center" }}>
+        Estoques congelados
+      </div>
+      {carregando && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Carregando congelamentos...</div>}
+      {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível carregar os dados do confronto.</div>}
+      {!carregando && congelamentosVisiveis.length === 0 && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Nenhum estoque congelado encontrado.</div>}
+      {congelamentosVisiveis.map(f => {
+        const aberto = !!abertos[`f-${f.data_referencia}`];
+        return (
+          <div key={f.data_referencia} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
+              onClick={() => setAbertos(prev => ({ ...prev, [`f-${f.data_referencia}`]: !aberto }))}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: azul, border: "none", color: "#fff", cursor: "pointer", borderRadius: 10, padding: "10px 14px", fontFamily: sans, fontWeight: 800, fontSize: 13 }}
+            >
+              <span>🔒 Estoque congelado do dia {formatarData(f.data_referencia)}</span>
+              <span style={{ fontSize: 10.5, opacity: .9 }}>{formatarDataHoraCompleta(f.esperado_congelado_em)}</span>
+            </button>
+            {aberto && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                <ListaPorCategoria>
+                  {(item) => {
+                    const v = Number((f.esperado || {})[item.id] || 0);
+                    return <div key={item.id} style={{ background: azulSoft, border: `1px solid ${azul}`, borderRadius: 10, padding: "9px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}><ItemIcon id={item.id} /><span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14, color: ink }}>{item.nome}</span></div>
+                      <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 16, color: azul }}>{v}</span>
+                    </div>;
+                  }}
+                </ListaPorCategoria>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {!carregando && (diasConfronto.length > limiteConfrontos || congelamentos.length > limiteCongelamentos) && (
+        <button
+          onClick={() => {
+            setLimiteConfrontos(prev => prev + 10);
+            setLimiteCongelamentos(prev => prev + 10);
+          }}
+          style={{ border: "none", background: azul, color: "#fff", borderRadius: 10, padding: "10px 14px", cursor: "pointer", fontFamily: sans, fontWeight: 800, fontSize: 12 }}
+        >
+          ver confrontos antigos
+        </button>
+      )}
     </div>
   );
 }
+
 
 const TABS = [
   { id: "estoque", label: "Estoque inicial do dia", icone: "tabEstoque" },
