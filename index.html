@@ -709,7 +709,7 @@ function DateBarVendas({ data }) {
   );
 }
 
-function ContadorRow({ nome, valor, onChange, iconId, bloqueado }) {
+function ContadorRow({ nome, valor, onChange, onSalvar, iconId, bloqueado }) {
   const [rascunho, setRascunho] = useState(String(valor ?? 0));
 
   useEffect(() => {
@@ -723,11 +723,18 @@ function ContadorRow({ nome, valor, onChange, iconId, bloqueado }) {
     if (numero !== Number(valor ?? 0)) onChange(numero);
   };
 
+  const salvarItem = async () => {
+    if (bloqueado) return false;
+    const numero = Math.max(0, parseInt(rascunho || "0", 10) || 0);
+    setRascunho(String(numero));
+    return onSalvar(numero);
+  };
+
   return (
-    <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", opacity: bloqueado ? 0.6 : 1 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, opacity: bloqueado ? 0.6 : 1 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
         <ItemIcon id={iconId} />
-        <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: ink }}>{nome}</span>
+        <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</span>
       </div>
 
       <input
@@ -739,11 +746,10 @@ function ContadorRow({ nome, valor, onChange, iconId, bloqueado }) {
         onChange={(e) => setRascunho(e.target.value)}
         onBlur={confirmar}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.currentTarget.blur();
-          }
+          if (e.key === "Enter") e.currentTarget.blur();
         }}
         style={{
+          flex: "0 0 72px",
           width: 72,
           textAlign: "center",
           fontFamily: sans,
@@ -756,10 +762,11 @@ function ContadorRow({ nome, valor, onChange, iconId, bloqueado }) {
           background: bloqueado ? "#f3f3f3" : "#fff"
         }}
       />
+      <BotaoSalvarItem onSalvar={salvarItem} desabilitado={bloqueado} />
     </div>
   );
 }
-function EntradaRow({ nome, dados, onChangeQtd, onAnexar, onRemoverAnexo, iconId, bloqueado }) {
+function EntradaRow({ nome, dados, onChangeQtd, onSalvarQtd, onAnexar, onRemoverAnexo, iconId, bloqueado }) {
   const fileRef = useRef(null);
   const liberado = !!dados.foto;
   const [rascunho, setRascunho] = useState(String(dados?.qtd ?? 0));
@@ -824,6 +831,13 @@ function EntradaRow({ nome, dados, onChangeQtd, onAnexar, onRemoverAnexo, iconId
     a.remove();
   };
 
+  const salvarItem = async () => {
+    if (bloqueado || !liberado) return false;
+    const numero = Math.max(0, parseInt(rascunho || "0", 10) || 0);
+    setRascunho(String(numero));
+    return onSalvarQtd(numero);
+  };
+
   return (
     <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, opacity: bloqueado ? 0.6 : 1, minWidth: 0, width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -858,6 +872,7 @@ function EntradaRow({ nome, dados, onChangeQtd, onAnexar, onRemoverAnexo, iconId
               background: bloqueado ? "#f3f3f3" : "#fff"
             }}
           />
+          <BotaoSalvarItem onSalvar={salvarItem} desabilitado={bloqueado || !liberado} />
         )}
       </div>
 
@@ -934,33 +949,16 @@ function BotaoSalvar({ onSalvar, salvando = false, salvoComSucesso = false, desa
   );
 }
 
-function Contador({ tipo, dataInicial }) {
-  const { data, setData, valores, setValores, carregando, erro } = useDiaCarregado(tipo, dataInicial);
-  const bloqueado = dataBloqueada(data);
+function BotaoSalvarItem({ onSalvar, desabilitado = false }) {
   const [salvando, setSalvando] = useState(false);
   const [salvoComSucesso, setSalvoComSucesso] = useState(false);
-  const [alterados, setAlterados] = useState({});
 
-  useEffect(() => { setAlterados({}); }, [data]);
-
-  const mudar = (id, v) => {
-    if (bloqueado) return;
-    setValores((prev) => ({ ...prev, [id]: v }));
-    setAlterados((prev) => ({ ...prev, [id]: true }));
-  };
-
-  const salvarTodos = async () => {
-    const idsAlterados = Object.keys(alterados);
-    if (bloqueado || idsAlterados.length === 0 || salvando) return;
+  const salvar = async () => {
+    if (desabilitado || salvando || salvoComSucesso) return;
     setSalvando(true);
     try {
-      let sucesso = true;
-      for (const id of idsAlterados) {
-        const salvo = await salvarRegistro({ item_id: id, data, tipo, quantidade: Number(valores[id] || 0) });
-        if (!salvo) sucesso = false;
-      }
+      const sucesso = await onSalvar();
       if (sucesso) {
-        setAlterados({});
         setSalvoComSucesso(true);
         setTimeout(() => setSalvoComSucesso(false), 2000);
       }
@@ -969,33 +967,67 @@ function Contador({ tipo, dataInicial }) {
     }
   };
 
+  const mostrandoSucesso = !!salvoComSucesso;
+  return (
+    <button onClick={salvar} disabled={desabilitado || salvando || mostrandoSucesso} style={{
+      flex: "0 0 auto", minWidth: 82, border: "none", borderRadius: 8, padding: "8px 9px",
+      background: mostrandoSucesso
+        ? "linear-gradient(135deg, #1976D2, #42A5F5)"
+        : "linear-gradient(135deg, #3B7A45, #56A05C)",
+      color: "#fff", fontFamily: sansArredondado, fontWeight: 800, fontSize: 12,
+      cursor: (desabilitado || salvando || mostrandoSucesso) ? "default" : "pointer",
+      opacity: (desabilitado || salvando) && !mostrandoSucesso ? 0.7 : 1,
+      boxShadow: mostrandoSucesso ? "0 4px 10px rgba(25,118,210,0.22)" : "0 4px 10px rgba(59,122,69,0.22)"
+    }}>
+      {mostrandoSucesso ? "Salvo com sucesso!" : (salvando ? "Salvando..." : "Salvar")}
+    </button>
+  );
+}
+
+function Contador({ tipo, dataInicial }) {
+  const { data, setData, valores, setValores, carregando, erro } = useDiaCarregado(tipo, dataInicial);
+  const bloqueado = dataBloqueada(data);
+
+  const mudar = (id, v) => {
+    if (bloqueado) return;
+    setValores((prev) => ({ ...prev, [id]: v }));
+  };
+
+  const salvarItem = async (id, quantidade) => {
+    if (bloqueado) return false;
+    const salvo = await salvarRegistro({ item_id: id, data, tipo, quantidade: Number(quantidade || 0) });
+    if (salvo) setValores((prev) => ({ ...prev, [id]: Number(quantidade || 0) }));
+    return salvo;
+  };
+
   return (
     <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
       <DateBar data={data} setData={setData} />
       {carregando && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Carregando...</div>}
       {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível conectar ao banco de dados.</div>}
       {!carregando && (
-        <>
-          <ListaPorCategoria>
-            {(item) => (
-              <ContadorRow key={item.id} nome={item.nome} valor={valores[item.id]} onChange={(v) => mudar(item.id, v)} iconId={item.id} bloqueado={bloqueado} />
-            )}
-          </ListaPorCategoria>
-          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} salvoComSucesso={salvoComSucesso} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
-        </>
+        <ListaPorCategoria>
+          {(item) => (
+            <ContadorRow
+              key={item.id}
+              nome={item.nome}
+              valor={valores[item.id]}
+              onChange={(v) => mudar(item.id, v)}
+              onSalvar={(quantidade) => salvarItem(item.id, quantidade)}
+              iconId={item.id}
+              bloqueado={bloqueado}
+            />
+          )}
+        </ListaPorCategoria>
       )}
     </div>
   );
 }
-
 function Estoque({ dataInicial }) {
   const [data, setData] = useState(dataInicial || hojeStr());
   const [valores, setValores] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
-  const [salvando, setSalvando] = useState(false);
-  const [salvoComSucesso, setSalvoComSucesso] = useState(false);
-  const [alterados, setAlterados] = useState({});
 
   const carregar = async () => {
     setErro(false);
@@ -1046,27 +1078,14 @@ function Estoque({ dataInicial }) {
     if (bloqueado) return;
     const numero = Math.max(0, parseInt(String(v || "0"), 10) || 0);
     setValores(prev => ({ ...(prev || {}), [id]: numero }));
-    setAlterados(prev => ({ ...prev, [id]: true }));
   };
 
-  const salvarTodos = async () => {
-    const idsAlterados = Object.keys(alterados);
-    if (bloqueado || idsAlterados.length === 0 || salvando) return;
-    setSalvando(true);
-    try {
-      let sucesso = true;
-      for (const id of idsAlterados) {
-        const salvo = await salvarRegistro({ item_id: id, data, tipo: "contagem", quantidade: Number((valores || {})[id] || 0) });
-        if (!salvo) sucesso = false;
-      }
-      if (sucesso) {
-        setAlterados({});
-        setSalvoComSucesso(true);
-        setTimeout(() => setSalvoComSucesso(false), 2000);
-      }
-    } finally {
-      setSalvando(false);
-    }
+  const salvarItem = async (id, quantidade) => {
+    if (bloqueado) return false;
+    const numero = Math.max(0, parseInt(String(quantidade || "0"), 10) || 0);
+    const salvo = await salvarRegistro({ item_id: id, data, tipo: "contagem", quantidade: numero });
+    if (salvo) setValores(prev => ({ ...(prev || {}), [id]: numero }));
+    return salvo;
   };
 
   return (
@@ -1085,77 +1104,59 @@ function Estoque({ dataInicial }) {
       {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível carregar o estoque inicial do Supabase.</div>}
 
       {!carregando && !erro && (
-        <>
         <ListaPorCategoria>
           {(item) => {
             const v = Number(mapa[item.id] || 0);
             return (
               <div key={item.id} style={{
                 background: card, border: `1px solid ${line}`, borderRadius: 10,
-                padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
                 opacity: bloqueado ? 0.6 : 1
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
                   <ItemIcon id={item.id} />
-                  <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14, color: ink }}>{item.nome}</span>
+                  <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14, color: ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.nome}</span>
                 </div>
                 <input
                   type="number" min="0" inputMode="numeric" value={v} disabled={bloqueado}
-                  onChange={(e) => { setValores(prev => ({ ...(prev || {}), [item.id]: e.target.value })); setAlterados(prev => ({ ...prev, [item.id]: true })); }}
+                  onChange={(e) => { setValores(prev => ({ ...(prev || {}), [item.id]: e.target.value })); }}
                   onBlur={(e) => mudar(item.id, e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
                   style={{
-                    width: 72, textAlign: "center", fontFamily: sans, fontWeight: 800, fontSize: 16,
+                    flex: "0 0 72px", width: 72, textAlign: "center", fontFamily: sans, fontWeight: 800, fontSize: 16,
                     border: `1px solid ${line}`, borderRadius: 6, padding: "7px 4px",
                     color: ink, background: bloqueado ? "#f3f3f3" : "#fff"
                   }}
+                />
+                <BotaoSalvarItem
+                  onSalvar={() => salvarItem(item.id, mapa[item.id])}
+                  desabilitado={bloqueado}
                 />
               </div>
             );
           }}
         </ListaPorCategoria>
-        <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} salvoComSucesso={salvoComSucesso} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
-        </>
       )}
     </div>
   );
 }
-
 function Entradas({ dataInicial }) {
   const { data, setData, valores, setValores, carregando, erro } = useDiaCarregado("entrada", dataInicial);
   const bloqueado = dataBloqueada(data);
-  const [salvando, setSalvando] = useState(false);
-  const [salvoComSucesso, setSalvoComSucesso] = useState(false);
-  const [alterados, setAlterados] = useState({});
-
-  useEffect(() => { setAlterados({}); }, [data]);
 
   const mudarQtd = (id, v) => {
     if (bloqueado) return;
     setValores((prev) => ({ ...prev, [id]: { ...prev[id], qtd: v } }));
-    setAlterados((prev) => ({ ...prev, [id]: true }));
   };
 
-  const salvarTodos = async () => {
-    const idsAlterados = Object.keys(alterados);
-    if (bloqueado || idsAlterados.length === 0 || salvando) return;
-    setSalvando(true);
-    try {
-      let sucesso = true;
-      for (const id of idsAlterados) {
-        const registro = valores[id] || { qtd: 0, foto: null, nomeArquivo: null };
-        const salvo = await salvarRegistro({ item_id: id, data, tipo: "entrada", quantidade: Number(registro.qtd || 0), foto_url: registro.foto, nome_arquivo: registro.nomeArquivo });
-        if (!salvo) sucesso = false;
-      }
-      if (sucesso) {
-        setAlterados({});
-        setSalvoComSucesso(true);
-        setTimeout(() => setSalvoComSucesso(false), 2000);
-      }
-    } finally {
-      setSalvando(false);
-    }
+  const salvarItem = async (id, quantidade) => {
+    if (bloqueado) return false;
+    const registro = valores[id] || { qtd: 0, foto: null, nomeArquivo: null };
+    const salvo = await salvarRegistro({ item_id: id, data, tipo: "entrada", quantidade: Number(quantidade || 0), foto_url: registro.foto, nome_arquivo: registro.nomeArquivo });
+    if (salvo) setValores((prev) => ({ ...prev, [id]: { ...prev[id], qtd: Number(quantidade || 0) } }));
+    return salvo;
   };
+
   const anexar = async (id, dataUrl, nome) => {
     if (bloqueado) return;
     const salvo = await salvarRegistro({ item_id: id, data, tipo: "entrada", quantidade: valores[id].qtd, foto_url: dataUrl, nome_arquivo: nome, registrarAlteracao: false });
@@ -1183,22 +1184,19 @@ function Entradas({ dataInicial }) {
       {carregando && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Carregando...</div>}
       {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível conectar ao banco de dados.</div>}
       {!carregando && (
-        <>
-          <ListaPorCategoria>
-            {(item) => (
-              <EntradaRow key={item.id} nome={item.nome} dados={valores[item.id]} iconId={item.id} bloqueado={bloqueado}
-                onChangeQtd={(v) => mudarQtd(item.id, v)}
-                onAnexar={(dataUrl, nome) => anexar(item.id, dataUrl, nome)}
-                onRemoverAnexo={() => removerAnexo(item.id)} />
-            )}
-          </ListaPorCategoria>
-          <BotaoSalvar onSalvar={salvarTodos} salvando={salvando} salvoComSucesso={salvoComSucesso} desabilitado={bloqueado || Object.keys(alterados).length === 0} />
-        </>
+        <ListaPorCategoria>
+          {(item) => (
+            <EntradaRow key={item.id} nome={item.nome} dados={valores[item.id]} iconId={item.id} bloqueado={bloqueado}
+              onChangeQtd={(v) => mudarQtd(item.id, v)}
+              onSalvarQtd={(v) => salvarItem(item.id, v)}
+              onAnexar={(dataUrl, nome) => anexar(item.id, dataUrl, nome)}
+              onRemoverAnexo={() => removerAnexo(item.id)} />
+          )}
+        </ListaPorCategoria>
       )}
     </div>
   );
 }
-
 // Horário oficial de Brasília obtido pela internet. Se a consulta falhar,
 // o sistema mantém Vendas bloqueada em vez de confiar no relógio do aparelho.
 async function obterHorarioInternetSaoPaulo() {
