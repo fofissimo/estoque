@@ -742,7 +742,7 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
 
   return (
     <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, opacity: bloqueado ? 0.6 : 1, minWidth: 0, width: "100%", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
         <ItemIcon id={iconId} />
         <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</span>
       </div>
@@ -760,7 +760,9 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
             if (e.key === "Enter") e.currentTarget.blur();
           }}
           style={{
-            width: 72,
+            width: 64,
+            boxSizing: "border-box",
+            flexShrink: 1,
             textAlign: "center",
             fontFamily: sans,
             fontWeight: 700,
@@ -773,7 +775,7 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
           }}
         />
         <button onClick={salvarItem} disabled={bloqueado || salvandoItem || salvoItem} style={{
-          border: "none", borderRadius: 8, padding: "8px 6px", minWidth: 0, width: 78,
+          border: "none", borderRadius: 8, padding: "8px 5px", minWidth: 0, width: 76, flexShrink: 0,
           background: salvoItem ? "linear-gradient(135deg, #1976D2, #42A5F5)" : "linear-gradient(135deg, #3B7A45, #56A05C)",
           color: "#fff", fontFamily: sans, fontWeight: 800, fontSize: 9.5,
           cursor: (bloqueado || salvandoItem || salvoItem) ? "default" : "pointer",
@@ -870,7 +872,7 @@ function EntradaRow({ nome, dados, onChangeQtd, onSave, alterado, onAnexar, onRe
   };
 
   return (
-    <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, opacity: bloqueado ? 0.6 : 1, minWidth: 0, width: "100%" }}>
+    <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "10px", display: "flex", flexDirection: "column", gap: 10, opacity: bloqueado ? 0.6 : 1, minWidth: 0, width: "100%", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, width: "100%" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
           <ItemIcon id={iconId} />
