@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet" />
 <style>
-  html, body { margin: 0; padding: 0; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
   * { box-sizing: border-box; }
 
   .sparkle-particle {
@@ -741,13 +741,13 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
   };
 
   return (
-    <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, opacity: bloqueado ? 0.6 : 1 }}>
+    <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, opacity: bloqueado ? 0.6 : 1, minWidth: 0, width: "100%", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
         <ItemIcon id={iconId} />
-        <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: ink }}>{nome}</span>
+        <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 1, minWidth: 0 }}>
         <input
           type="number"
           min="0"
@@ -773,9 +773,9 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
           }}
         />
         <button onClick={salvarItem} disabled={bloqueado || salvandoItem || salvoItem} style={{
-          border: "none", borderRadius: 8, padding: "8px 10px", minWidth: 82,
+          border: "none", borderRadius: 8, padding: "8px 6px", minWidth: 0, width: 78,
           background: salvoItem ? "linear-gradient(135deg, #1976D2, #42A5F5)" : "linear-gradient(135deg, #3B7A45, #56A05C)",
-          color: "#fff", fontFamily: sans, fontWeight: 800, fontSize: 11,
+          color: "#fff", fontFamily: sans, fontWeight: 800, fontSize: 9.5,
           cursor: (bloqueado || salvandoItem || salvoItem) ? "default" : "pointer",
           opacity: bloqueado ? 0.7 : 1
         }}>
@@ -871,14 +871,14 @@ function EntradaRow({ nome, dados, onChangeQtd, onSave, alterado, onAnexar, onRe
 
   return (
     <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, opacity: bloqueado ? 0.6 : 1, minWidth: 0, width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, width: "100%" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
           <ItemIcon id={iconId} />
           <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</span>
         </div>
 
         {liberado && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 1, minWidth: 0 }}>
           <input
             type="number"
             min="0"
@@ -905,9 +905,9 @@ function EntradaRow({ nome, dados, onChangeQtd, onSave, alterado, onAnexar, onRe
             }}
           />
           <button onClick={salvarItem} disabled={bloqueado || !liberado || salvandoItem || salvoItem || !alterado} style={{
-            border: "none", borderRadius: 8, padding: "8px 10px", minWidth: 82,
+            border: "none", borderRadius: 8, padding: "8px 6px", minWidth: 0, width: 78,
             background: salvoItem ? "linear-gradient(135deg, #1976D2, #42A5F5)" : "linear-gradient(135deg, #3B7A45, #56A05C)",
-            color: "#fff", fontFamily: sans, fontWeight: 800, fontSize: 11,
+            color: "#fff", fontFamily: sans, fontWeight: 800, fontSize: 9.5,
             cursor: (bloqueado || !liberado || salvandoItem || salvoItem || !alterado) ? "default" : "pointer",
             opacity: (bloqueado || !alterado) ? 0.6 : 1
           }}>
@@ -1015,7 +1015,7 @@ function Contador({ tipo, dataInicial }) {
   };
 
   return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10, minWidth: 0, boxSizing: "border-box", width: "100%" }}>
       <DateBar data={data} setData={setData} />
       {carregando && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Carregando...</div>}
       {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível conectar ao banco de dados.</div>}
@@ -1099,7 +1099,7 @@ function Estoque({ dataInicial }) {
   };
 
   return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10, minWidth: 0, boxSizing: "border-box", width: "100%" }}>
       <DateBar data={data} setData={setData} />
 
       <div style={{
@@ -1170,7 +1170,7 @@ function Entradas({ dataInicial }) {
   };
 
   return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10, minWidth: 0, boxSizing: "border-box", width: "100%" }}>
       <DateBar data={data} setData={setData} />
       {carregando && <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Carregando...</div>}
       {erro && <div style={{ fontFamily: sans, fontSize: 11.5, color: danger, textAlign: "center" }}>Não foi possível conectar ao banco de dados.</div>}
@@ -1364,7 +1364,7 @@ function Financeiro({ dataInicial }) {
   };
 
   return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10, minWidth: 0, boxSizing: "border-box", width: "100%" }}>
       <DateBarVendas data={data} />
 
       <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={importarArquivo} style={{ display: "none" }} />
@@ -2431,7 +2431,7 @@ function App() {
         </div>
       )}
       <div style={{minHeight:"100vh",background:bgStripes,display:"flex",flexDirection:"column",alignItems:"center",padding:"24px 0",fontFamily:sans}}>
-        <div style={{width:390,maxWidth:"100%",background:card,borderRadius:20,border:`1px solid ${line}`,boxShadow:"0 16px 40px rgba(59,42,30,0.18)",overflow:"hidden",display:"flex",flexDirection:"column",height:720,flexShrink:0}}>
+        <div style={{width:"min(390px, 100%)",maxWidth:"100%",background:card,borderRadius:20,border:`1px solid ${line}`,boxShadow:"0 16px 40px rgba(59,42,30,0.18)",overflow:"hidden",display:"flex",flexDirection:"column",height:720,flexShrink:0}}>
           <div style={{flex:1,display:"flex",overflow:"hidden"}}>
             <div style={{width:96,flexShrink:0,background:accentSoft,padding:"14px 8px",display:"flex",flexDirection:"column",gap:10,overflowY:"auto"}}>
               {tabsPermitidas.map(t => <button key={t.id} onClick={async ()=>{
@@ -2441,7 +2441,7 @@ function App() {
                 <span style={{fontFamily:sansArredondado,fontWeight:800,fontSize:13.5,lineHeight:1.2,textAlign:"center"}}>{t.label}</span>
               </button>)}
             </div>
-            <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",overflow:"hidden"}}>
               <div style={{padding:"16px 16px 10px 20px"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
                   <div>
@@ -2451,7 +2451,7 @@ function App() {
                   <button onClick={sair} style={{border:`1px solid ${line}`,borderRadius:8,background:card,color:accent,padding:"6px 8px",fontFamily:sans,fontSize:10.5,fontWeight:800,cursor:"pointer"}}>Sair</button>
                 </div>
               </div>
-              <div key={tab||"inicio"} className={tab?"tab-fan-enter":""} style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column"}}>
+              <div key={tab||"inicio"} className={tab?"tab-fan-enter":""} style={{flex:1,minWidth:0,overflowY:"auto",overflowX:"hidden",display:"flex",flexDirection:"column"}}>
                 {!tab && <InstrucoesInicio permissoes={usuario.permissoes} />}
                 {tab==="estoque" && <Estoque dataInicial={hojeStr()} />}
                 {tab==="entradas" && <EntradasProtegido dataInicial={hojeStr()} />}
