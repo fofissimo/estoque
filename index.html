@@ -171,6 +171,10 @@ const CATEGORIAS = [
       { id: "pao-de-queijo", nome: "Pão de queijo", codigoPDV: ["3226", "3235"] },
       { id: "agua-com-gas", nome: "Água com gás", codigoPDV: "3005" },
       { id: "agua-sem-gas", nome: "Água sem gás", codigoPDV: "3004" },
+      { id: "croissant", nome: "Croissant", codigoPDV: ["3079", "3186", "3563"] },
+      { id: "cafe-moido-250g", nome: "Café moído 250g", codigoPDV: "3687" },
+      { id: "cafe-grao-250g", nome: "Café grão 250g", codigoPDV: "3688" },
+      { id: "cafe-descafeinado", nome: "Café descafeinado (moído e grão)", codigoPDV: "3689" },
     ],
   },
 ];
@@ -332,7 +336,7 @@ function abrirDataUrlEmNovaAba(dataUrl, nomeArquivo) {
 }
 
 // Importação do PDV: usa exclusivamente o código do produto para identificar
-// os 3 produtos cadastrados no sistema e a coluna "quantidade" como vendas reais.
+// os produtos cadastrados no sistema e a coluna "quantidade" como vendas reais.
 // Nunca faz correspondência parcial por nome e nunca usa "numvendas".
 function encontrarColunasPDV(linhas) {
   for (let i = 0; i < Math.min(linhas.length, 10); i++) {
