@@ -270,6 +270,28 @@ const CATEGORIAS = [
 // código (cálculos, ciclo automático, confronto e importação do PDV).
 const ITEMS = CATEGORIAS.flatMap((c) => c.itens);
 
+// Estoque mínimo do Enxoval — usado somente na aba "Estoque inicial do dia".
+// Quando a quantidade for igual ou menor ao mínimo, o item fica vermelho.
+const ESTOQUE_MINIMO_ENXOVAL = {
+  "taca": 24,
+  "xicara-grande": 24,
+  "xicara-pequena": 24,
+  "pires": 24,
+  "prato-grande-para-croissant": 24,
+  "prato-pequeno-para-pao-de-queijo-e-empada": 24,
+  "tubo-leiteira": 10,
+  "cumbuca-branca": 16,
+  "suporte-acrilico-cafe-hario-v1": 16,
+  "chaleira-pequena-inox": 20,
+  "colher-cafe-modelo-novo": 30,
+  "colher-bolo": 30,
+  "colher-de-sopa": 20,
+  "garfo": 40,
+  "faca": 40,
+  "bandeja-preta-nova": 5,
+  "taca-mimosa": 6,
+};
+
 let usuarioAtualNome = "";
 
 function abaDoTipo(tipo) {
@@ -796,7 +818,7 @@ function DateBarVendas({ data }) {
   );
 }
 
-function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
+function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado, minimo }) {
   const [rascunho, setRascunho] = useState(String(valor ?? 0));
   const [salvandoItem, setSalvandoItem] = useState(false);
   const [salvoItem, setSalvoItem] = useState(false);
@@ -804,6 +826,8 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
   useEffect(() => {
     setRascunho(String(valor ?? 0));
   }, [valor]);
+
+  const abaixoMinimo = minimo != null && (parseInt(rascunho || "0", 10) || 0) <= minimo;
 
   const confirmar = () => {
     if (bloqueado) return;
@@ -831,7 +855,7 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
     <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, opacity: bloqueado ? 0.6 : 1, minWidth: 0, width: "100%", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, width: "100%" }}>
         <ItemIcon id={iconId} />
-        <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</span>
+        <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: abaixoMinimo ? "#D32F2F" : ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, width: "100%", boxSizing: "border-box" }}>
@@ -855,7 +879,7 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado }) {
             border: `1px solid ${line}`,
             borderRadius: 6,
             padding: "7px 4px",
-            color: ink,
+            color: abaixoMinimo ? "#D32F2F" : ink,
             background: bloqueado ? "#f3f3f3" : "#fff"
           }}
         />
@@ -1203,7 +1227,7 @@ function Estoque({ dataInicial }) {
       {!carregando && !erro && (
         <ListaPorCategoria>
           {(item) => (
-            <ContadorRow key={item.id} nome={item.nome} valor={mapa[item.id]} onChange={(v) => mudar(item.id, v)} onSave={(v) => salvarItem(item.id, v)} iconId={item.id} bloqueado={bloqueado} />
+            <ContadorRow key={item.id} nome={item.nome} valor={mapa[item.id]} onChange={(v) => mudar(item.id, v)} onSave={(v) => salvarItem(item.id, v)} iconId={item.id} bloqueado={bloqueado} minimo={ESTOQUE_MINIMO_ENXOVAL[item.id]} />
           )}
         </ListaPorCategoria>
       )}
@@ -2006,16 +2030,25 @@ function Confronto() {
             </button>
             {aberto && (
               <div style={{ padding: "0 14px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
-                {itens.map(r => (
-                  <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: sans, fontSize: 12, color: r.status === "alerta" ? danger : ink }}>
-                    <span style={{ fontWeight: 600 }}>{nomeDoItem(r.item_id)}</span>
-                    {r.status === "alerta" ? (
-                      <span style={{ fontWeight: 700 }}>{r.diferenca < 0 ? `Faltam ${Math.abs(r.diferenca)}` : `Sobram ${r.diferenca}`}</span>
-                    ) : (
-                      <span style={{ color: good, fontWeight: 700 }}>OK</span>
-                    )}
-                  </div>
-                ))}
+                {CATEGORIAS.map(cat => {
+                  const itensDaCategoria = itens.filter(r => cat.itens.some(i => i.id === r.item_id));
+                  if (itensDaCategoria.length === 0) return null;
+                  return (
+                    <div key={cat.id} style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                      <div style={{ background: accentSoft, border: `1px solid ${line}`, borderRadius: 8, padding: "6px 10px", fontFamily: sansArredondado, fontWeight: 800, fontSize: 12.5, color: accent }}>{cat.nome}</div>
+                      {itensDaCategoria.map(r => (
+                        <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: sans, fontSize: 12, color: r.status === "alerta" ? danger : ink }}>
+                          <span style={{ fontWeight: 600 }}>{nomeDoItem(r.item_id)}</span>
+                          {r.status === "alerta" ? (
+                            <span style={{ fontWeight: 700 }}>{r.diferenca < 0 ? `Faltam ${Math.abs(r.diferenca)}` : `Sobram ${r.diferenca}`}</span>
+                          ) : (
+                            <span style={{ color: good, fontWeight: 700 }}>OK</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
                 {itens[0]?.executado_em && <div style={{ fontFamily: sans, fontSize: 10.5, color: inkSoft, textAlign: "center", marginTop: 3 }}>Executado em {formatarDataHora(itens[0].executado_em)}</div>}
               </div>
             )}
