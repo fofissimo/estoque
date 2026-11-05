@@ -828,6 +828,7 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado, minimo 
   }, [valor]);
 
   const abaixoMinimo = minimo != null && (parseInt(rascunho || "0", 10) || 0) <= minimo;
+  const deficit = minimo != null ? Math.max(0, minimo - (parseInt(rascunho || "0", 10) || 0)) : 0;
 
   const confirmar = () => {
     if (bloqueado) return;
@@ -858,7 +859,16 @@ function ContadorRow({ nome, valor, onChange, onSave, iconId, bloqueado, minimo 
         <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 14.5, color: abaixoMinimo ? "#D32F2F" : ink, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</span>
       </div>
 
+      {minimo != null && (
+        <div style={{ display: "flex", justifyContent: "flex-end", width: "100%", boxSizing: "border-box", paddingRight: 84, marginBottom: -6 }}>
+          <span style={{ width: 72, textAlign: "center", fontFamily: sans, fontWeight: 600, fontSize: 11, color: abaixoMinimo ? "#D32F2F" : inkSoft, whiteSpace: "nowrap" }}>Mínima: {minimo}</span>
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, width: "100%", boxSizing: "border-box" }}>
+        {minimo != null && deficit > 0 && (
+          <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 12.5, color: "#D32F2F", whiteSpace: "nowrap", flexShrink: 0 }}>Déficit: -{deficit}</span>
+        )}
         <input
           type="number"
           min="0"
