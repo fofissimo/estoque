@@ -2049,7 +2049,11 @@ function Confronto() {
                       {itensDaCategoria.map(r => (
                         <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: sans, fontSize: 12, color: r.status === "alerta" ? danger : ink }}>
                           <span style={{ fontWeight: 600 }}>{nomeDoItem(r.item_id)}</span>
-                          {r.status === "alerta" ? (
+                          {cat.id === "enxoval" && ESTOQUE_MINIMO_ENXOVAL[r.item_id] != null ? (
+                            (Number(r.estoque_contado) || 0) >= ESTOQUE_MINIMO_ENXOVAL[r.item_id]
+                              ? <span style={{ color: good, fontWeight: 700 }}>OK</span>
+                              : <span style={{ color: danger, fontWeight: 700 }}>{(Number(r.estoque_contado) || 0) - ESTOQUE_MINIMO_ENXOVAL[r.item_id]}</span>
+                          ) : r.status === "alerta" ? (
                             <span style={{ fontWeight: 700 }}>{r.diferenca < 0 ? `Faltam ${Math.abs(r.diferenca)}` : `Sobram ${r.diferenca}`}</span>
                           ) : (
                             <span style={{ color: good, fontWeight: 700 }}>OK</span>
@@ -2284,7 +2288,7 @@ function SupabasePainel() {
           whiteSpace:"nowrap", pointerEvents:"none"
         }}>
           Criado por Fofissimo, analise de inteligência de dados 2026
-          <div style={{ textAlign: "center" }}>Versão 64.0.0</div>
+          <div style={{ textAlign: "center" }}>Versão 65.0.0</div>
         </div>
         <button onClick={abrir} title="Painel do Supabase" style={{
           width:42, height:32, borderRadius:"18px 18px 8px 8px",
