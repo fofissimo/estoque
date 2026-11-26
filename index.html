@@ -2532,28 +2532,43 @@ function prepararFotoComunicacao(file) {
 const comInput = { width: "100%", border: `1px solid ${line}`, borderRadius: 8, padding: "8px 10px", fontFamily: sans, fontSize: 12.5, color: ink, background: "#fff", outline: "none" };
 const comBtn = (bg, extra = {}) => ({ border: "none", borderRadius: 8, background: bg, color: "#fff", padding: "7px 10px", fontFamily: sans, fontWeight: 800, fontSize: 11.5, cursor: "pointer", ...extra });
 
-function OcorrenciaCard({ oc, respostas, usuario, ehAdmin, onChange }) {
+function OcorrenciaCard({ oc, respostas, usuario, ehAdmin, onChange, naoLida, onLida, visivelPara }) {
   const [aberta, setAberta] = useState(false);
   const [respondendoA, setRespondendoA] = useState(null); // null = resposta direta à ocorrência
   const [mostrarCaixa, setMostrarCaixa] = useState(true);
   const [texto, setTexto] = useState("");
+  const [fotoResp, setFotoResp] = useState("");
   const [enviando, setEnviando] = useState(false);
   const resolvida = !!oc.resolvida;
+
+  // Ao abrir uma ocorrência com novidades, marca como lida (apaga a bolinha vermelha).
+  useEffect(() => {
+    if (!aberta || !naoLida) return;
+    sb.rpc("comunicacao_marcar_lida", { p_ocorrencia: String(oc.id) }).then(({ error }) => { if (!error) onLida(); });
+  }, [aberta, naoLida]);
 
   const porPai = {};
   respostas.forEach(r => { const k = r.parent_id || "raiz"; (porPai[k] = porPai[k] || []).push(r); });
 
+  const anexarResp = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try { setFotoResp(await prepararFotoComunicacao(file)); }
+    catch (err) { alert("Não foi possível preparar a foto. Tente novamente."); }
+    finally { e.target.value = ""; }
+  };
+
   const enviar = async (parentId) => {
     const corpo = texto.trim();
-    if (!corpo || enviando || resolvida) return;
+    if ((!corpo && !fotoResp) || enviando || resolvida) return;
     setEnviando(true);
     const { error } = await sb.from("comunicacao_respostas").insert({
-      ocorrencia_id: oc.id, parent_id: parentId || null, corpo,
+      ocorrencia_id: oc.id, parent_id: parentId || null, corpo, foto: fotoResp || null,
       autor_id: usuario.id, autor_nome: usuario.nome
     });
     setEnviando(false);
     if (error) { alert("Não foi possível enviar a resposta. Tente novamente."); return; }
-    setTexto(""); setRespondendoA(null); setMostrarCaixa(true);
+    setTexto(""); setFotoResp(""); setRespondendoA(null); setMostrarCaixa(true);
     await onChange();
   };
 
@@ -2577,9 +2592,17 @@ function OcorrenciaCard({ oc, respostas, usuario, ehAdmin, onChange }) {
   const caixaResposta = (parentId, placeholder) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
       <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder={placeholder} rows={2} style={{ ...comInput, resize: "vertical" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <label style={{ ...comBtn(azul), display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <Icon name="paperclip" size={13} color="#fff" /> Anexar foto
+          <input type="file" accept="image/*" onChange={anexarResp} style={{ display: "none" }} />
+        </label>
+        {fotoResp && <button onClick={() => setFotoResp("")} style={comBtn(inkSoft)}>Remover foto</button>}
+      </div>
+      {fotoResp && <img src={fotoResp} alt="Pré-visualização" style={{ maxWidth: "100%", borderRadius: 8, border: `1px solid ${line}` }} />}
       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-        {parentId && <button onClick={() => { setRespondendoA(null); setMostrarCaixa(true); setTexto(""); }} style={comBtn(inkSoft)}>Cancelar</button>}
-        <button onClick={() => enviar(parentId)} disabled={!texto.trim() || enviando} style={comBtn(accent, { opacity: (!texto.trim() || enviando) ? 0.55 : 1 })}>{enviando ? "Enviando..." : "Enviar"}</button>
+        {parentId && <button onClick={() => { setRespondendoA(null); setMostrarCaixa(true); setTexto(""); setFotoResp(""); }} style={comBtn(inkSoft)}>Cancelar</button>}
+        <button onClick={() => enviar(parentId)} disabled={(!texto.trim() && !fotoResp) || enviando} style={comBtn(accent, { opacity: ((!texto.trim() && !fotoResp) || enviando) ? 0.55 : 1 })}>{enviando ? "Enviando..." : "Enviar"}</button>
       </div>
     </div>
   );
@@ -2591,9 +2614,10 @@ function OcorrenciaCard({ oc, respostas, usuario, ehAdmin, onChange }) {
           <b style={{ color: ink }}>{r.autor_nome}</b>
           <span>{formatarDataHora(r.criado_em)}</span>
         </div>
-        <div style={{ fontFamily: sans, fontSize: 12, color: ink, marginTop: 3, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{r.corpo}</div>
+        {r.corpo ? <div style={{ fontFamily: sans, fontSize: 12, color: ink, marginTop: 3, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{r.corpo}</div> : null}
+        {r.foto && <img src={r.foto} alt="Foto da resposta" style={{ maxWidth: "100%", borderRadius: 8, border: `1px solid ${line}`, marginTop: 6 }} />}
         {!resolvida && respondendoA !== r.id && (
-          <button onClick={() => { setRespondendoA(r.id); setMostrarCaixa(false); setTexto(""); }} style={{ border: "none", background: "transparent", color: accent, fontFamily: sans, fontWeight: 800, fontSize: 11, cursor: "pointer", padding: "4px 0 0" }}>Responder</button>
+          <button onClick={() => { setRespondendoA(r.id); setMostrarCaixa(false); setTexto(""); setFotoResp(""); }} style={{ border: "none", background: "transparent", color: accent, fontFamily: sans, fontWeight: 800, fontSize: 11, cursor: "pointer", padding: "4px 0 0" }}>Responder</button>
         )}
         {!resolvida && respondendoA === r.id && caixaResposta(r.id, "Escreva sua resposta...")}
       </div>
@@ -2604,10 +2628,16 @@ function OcorrenciaCard({ oc, respostas, usuario, ehAdmin, onChange }) {
   return (
     <div style={{ background: resolvida ? verdeSoft : card, border: `1px solid ${resolvida ? VERDE_COM : line}`, borderRadius: 10, padding: "11px 12px", display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
       <div onClick={() => setAberta(a => !a)} style={{ cursor: "pointer", display: "flex", flexDirection: "column", gap: 3 }}>
-        <div style={{ fontFamily: sansArredondado, fontWeight: 800, fontSize: 14, color: resolvida ? VERDE_COM : ink, wordBreak: "break-word" }}>{resolvida ? "✔ " : ""}{oc.titulo}</div>
+        <div style={{ fontFamily: sansArredondado, fontWeight: 800, fontSize: 14, color: resolvida ? VERDE_COM : ink, wordBreak: "break-word" }}>
+          {naoLida && <span style={{ display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: "#E53935", marginRight: 6, verticalAlign: "middle" }} />}
+          {resolvida ? "✔ " : ""}{oc.titulo}
+        </div>
         <div style={{ fontFamily: sans, fontSize: 10.5, color: inkSoft }}>
           <b style={{ color: ink }}>{oc.autor_nome}</b> · {formatarDataHora(oc.criado_em)} · {respostas.length} resposta{respostas.length === 1 ? "" : "s"}
         </div>
+        {(ehAdmin || oc.autor_id === usuario.id) && visivelPara && (
+          <div style={{ fontFamily: sans, fontSize: 10.5, color: inkSoft }}>Visível para: <b style={{ color: ink }}>{visivelPara}</b></div>
+        )}
         {resolvida && <div style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 800, color: VERDE_COM }}>Resolvida{oc.resolvida_por ? ` por ${oc.resolvida_por}` : ""}{oc.resolvida_em ? ` · ${formatarDataHora(oc.resolvida_em)}` : ""}</div>}
       </div>
 
@@ -2635,6 +2665,9 @@ function Comunicacao({ usuario }) {
   const ehAdmin = usuario.permissoes.includes("admin");
   const [ocorrencias, setOcorrencias] = useState([]);
   const [respostas, setRespostas] = useState([]);
+  const [leituras, setLeituras] = useState({});
+  const [usuarios, setUsuarios] = useState([]);
+  const [destinatarios, setDestinatarios] = useState([]); // vazio = todos
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
   const [criando, setCriando] = useState(false);
@@ -2644,18 +2677,55 @@ function Comunicacao({ usuario }) {
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
-    const [o, r] = await Promise.all([
+    const [o, r, l] = await Promise.all([
       sb.from("comunicacao_ocorrencias").select("*").order("criado_em", { ascending: false }).limit(200),
       sb.from("comunicacao_respostas").select("*").order("criado_em", { ascending: true }).limit(2000),
+      sb.from("comunicacao_leituras").select("ocorrencia_id, lido_em").eq("usuario_id", usuario.id),
     ]);
     if (o.error || r.error) { setErro(true); setCarregando(false); return; }
     setErro(false);
     setOcorrencias(o.data || []);
     setRespostas(r.data || []);
+    const mapa = {};
+    (l.data || []).forEach(x => { mapa[String(x.ocorrencia_id)] = x.lido_em; });
+    setLeituras(mapa);
     setCarregando(false);
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    carregar();
+    const timer = setInterval(carregar, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    sb.rpc("comunicacao_listar_usuarios").then(({ data, error }) => {
+      if (!error) setUsuarios((data || []).filter(u => u.id !== usuario.id));
+    });
+  }, []);
+
+  const alternarDest = (id) => setDestinatarios(d => d.includes(id) ? d.filter(x => x !== id) : [...d, id]);
+
+  const naoLidaOc = (oc) => {
+    const lida = leituras[String(oc.id)];
+    const tLida = lida ? new Date(lida).getTime() : 0;
+    let ultimo = oc.autor_id !== usuario.id ? new Date(oc.criado_em).getTime() : 0;
+    respostas.forEach(r => {
+      if (r.ocorrencia_id === oc.id && r.autor_id !== usuario.id) ultimo = Math.max(ultimo, new Date(r.criado_em).getTime());
+    });
+    return ultimo > tLida;
+  };
+
+  const visivelParaOc = (oc) => {
+    const ids = Array.isArray(oc.destinatarios) ? oc.destinatarios : [];
+    if (ids.length === 0) return "Todos";
+    return ids.map(id => (usuarios.find(u => u.id === id) || {}).nome).filter(Boolean).join(", ");
+  };
+
+  const aoLer = async () => {
+    await carregar();
+    window.dispatchEvent(new Event("comunicacao-atualizada"));
+  };
 
   const anexar = async (e) => {
     const file = e.target.files[0];
@@ -2670,15 +2740,22 @@ function Comunicacao({ usuario }) {
     setSalvando(true);
     const { error } = await sb.from("comunicacao_ocorrencias").insert({
       titulo: titulo.trim(), corpo: corpo.trim(), foto: foto || null,
+      destinatarios,
       autor_id: usuario.id, autor_nome: usuario.nome
     });
     setSalvando(false);
     if (error) { alert("Não foi possível salvar a ocorrência. Tente novamente."); return; }
-    setTitulo(""); setCorpo(""); setFoto(""); setCriando(false);
+    setTitulo(""); setCorpo(""); setFoto(""); setDestinatarios([]); setCriando(false);
     await carregar();
   };
 
   const pronto = titulo.trim() && corpo.trim();
+
+  const chip = (ativo) => ({
+    border: `1px solid ${ativo ? accent : line}`, borderRadius: 14, padding: "5px 10px",
+    background: ativo ? accent : "#fff", color: ativo ? "#fff" : ink,
+    fontFamily: sans, fontWeight: 800, fontSize: 11.5, cursor: "pointer"
+  });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, overflowY: "auto", flex: 1 }}>
@@ -2692,6 +2769,17 @@ function Comunicacao({ usuario }) {
         <div style={{ background: card, border: `1px solid ${line}`, borderRadius: 10, padding: "12px", display: "flex", flexDirection: "column", gap: 8 }}>
           <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título (escreva o problema)" style={comInput} />
           <textarea value={corpo} onChange={e => setCorpo(e.target.value)} placeholder="Descreva com mais detalhes..." rows={4} style={{ ...comInput, resize: "vertical" }} />
+          {usuarios.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 800, color: inkSoft }}>Quem pode ver esta ocorrência (o admin sempre vê)</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button type="button" onClick={() => setDestinatarios([])} style={chip(destinatarios.length === 0)}>Todos</button>
+                {usuarios.map(u => (
+                  <button type="button" key={u.id} onClick={() => alternarDest(u.id)} style={chip(destinatarios.includes(u.id))}>{u.nome}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <label style={{ ...comBtn(azul), display: "inline-flex", alignItems: "center", gap: 5 }}>
               <Icon name="paperclip" size={13} color="#fff" /> Anexar foto
@@ -2702,7 +2790,7 @@ function Comunicacao({ usuario }) {
           {foto && <img src={foto} alt="Pré-visualização" style={{ maxWidth: "100%", borderRadius: 8, border: `1px solid ${line}` }} />}
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={salvar} disabled={!pronto || salvando} style={comBtn(VERDE_COM, { flex: 1, padding: "10px 12px", opacity: (!pronto || salvando) ? 0.55 : 1 })}>{salvando ? "Salvando..." : "Salvar"}</button>
-            <button onClick={() => { setCriando(false); setTitulo(""); setCorpo(""); setFoto(""); }} style={comBtn(inkSoft)}>Cancelar</button>
+            <button onClick={() => { setCriando(false); setTitulo(""); setCorpo(""); setFoto(""); setDestinatarios([]); }} style={comBtn(inkSoft)}>Cancelar</button>
           </div>
         </div>
       )}
@@ -2713,7 +2801,7 @@ function Comunicacao({ usuario }) {
         <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, textAlign: "center" }}>Nenhuma ocorrência registrada ainda.</div>
       )}
       {ocorrencias.map(oc => (
-        <OcorrenciaCard key={oc.id} oc={oc} respostas={respostas.filter(r => r.ocorrencia_id === oc.id)} usuario={usuario} ehAdmin={ehAdmin} onChange={carregar} />
+        <OcorrenciaCard key={oc.id} oc={oc} respostas={respostas.filter(r => r.ocorrencia_id === oc.id)} usuario={usuario} ehAdmin={ehAdmin} onChange={carregar} naoLida={naoLidaOc(oc)} onLida={aoLer} visivelPara={visivelParaOc(oc)} />
       ))}
     </div>
   );
@@ -2760,6 +2848,21 @@ function App() {
     };
   }, []);
 
+  const [comNaoLidas, setComNaoLidas] = useState(0);
+
+  useEffect(() => {
+    if (!usuario) { setComNaoLidas(0); return; }
+    let ativo = true;
+    const atualizar = async () => {
+      const { data, error } = await sb.rpc("comunicacao_nao_lidas");
+      if (ativo && !error) setComNaoLidas(Number(data) || 0);
+    };
+    atualizar();
+    const timer = setInterval(atualizar, 30000);
+    window.addEventListener("comunicacao-atualizada", atualizar);
+    return () => { ativo = false; clearInterval(timer); window.removeEventListener("comunicacao-atualizada", atualizar); };
+  }, [usuario?.id]);
+
   if (carregandoSessao) {
     return (
       <div style={{minHeight:"100vh",background:bgStripes,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:sans,color:inkSoft}}>
@@ -2794,9 +2897,10 @@ function App() {
             <div style={{width:96,flexShrink:0,background:accentSoft,padding:"14px 8px",display:"flex",flexDirection:"column",gap:10,overflowY:"auto"}}>
               {tabsPermitidas.map(t => <button key={t.id} onClick={async ()=>{
                 setTab(t.id);
-              }} style={{border:tab===t.id?"1px solid #5A341C":(t.id==="comunicacao"?"1.5px solid #7A4A22":`1.5px solid ${line}`),borderRadius:14,padding:"12px 4px",cursor:"pointer",aspectRatio:"1 / 1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,background:tab===t.id?"linear-gradient(135deg,#5A341C,#7A4A22)":(t.id==="comunicacao"?"#8B5A2B":card),color:(tab===t.id||t.id==="comunicacao")?"#fff":accent,boxShadow:tab===t.id?"0 4px 10px rgba(90,52,28,0.45)":"0 1px 3px rgba(59,42,30,0.08)"}}>
+              }} style={{position:"relative",border:tab===t.id?"1px solid #5A341C":(t.id==="comunicacao"?"1.5px solid #7A4A22":`1.5px solid ${line}`),borderRadius:14,padding:"12px 4px",cursor:"pointer",aspectRatio:"1 / 1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,background:tab===t.id?"linear-gradient(135deg,#5A341C,#7A4A22)":(t.id==="comunicacao"?"#8B5A2B":card),color:(tab===t.id||t.id==="comunicacao")?"#fff":accent,boxShadow:tab===t.id?"0 4px 10px rgba(90,52,28,0.45)":"0 1px 3px rgba(59,42,30,0.08)"}}>
                 <Icon name={t.icone} size={18} color={(tab===t.id||t.id==="comunicacao")?"#fff":accent} />
                 <span style={{fontFamily:sansArredondado,fontWeight:800,fontSize:13.5,lineHeight:1.2,textAlign:"center"}}>{t.label}</span>
+                {t.id==="comunicacao" && comNaoLidas>0 && <span style={{position:"absolute",top:6,right:6,width:12,height:12,borderRadius:"50%",background:"#E53935",border:"2px solid #fff",boxSizing:"border-box"}} />}
               </button>)}
             </div>
             <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",overflow:"hidden"}}>
