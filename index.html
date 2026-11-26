@@ -1025,12 +1025,12 @@ function EntradaRow({ nome, dados, onChangeQtd, onSave, alterado, onAnexar, onRe
               background: bloqueado ? "#f3f3f3" : "#fff"
             }}
           />
-          <button onClick={salvarItem} disabled={bloqueado || !liberado || salvandoItem || salvoItem || !alterado} style={{
+          <button onClick={salvarItem} disabled={bloqueado || !liberado || salvandoItem || salvoItem} style={{
             border: "none", borderRadius: 8, padding: "8px 8px", minWidth: 76, width: 76,
             background: salvoItem ? "linear-gradient(135deg, #1976D2, #42A5F5)" : "linear-gradient(135deg, #3B7A45, #56A05C)",
             color: "#fff", fontFamily: sans, fontWeight: 800, fontSize: 10,
-            cursor: (bloqueado || !liberado || salvandoItem || salvoItem || !alterado) ? "default" : "pointer",
-            opacity: (bloqueado || !alterado) ? 0.6 : 1
+            cursor: (bloqueado || !liberado || salvandoItem || salvoItem) ? "default" : "pointer",
+            opacity: bloqueado ? 0.6 : 1
           }}>
             {salvoItem ? "Salvo com sucesso!" : (salvandoItem ? "Salvando..." : "Salvar")}
           </button>
@@ -2288,7 +2288,7 @@ function SupabasePainel() {
           whiteSpace:"nowrap", pointerEvents:"none"
         }}>
           Criado por Fofissimo, analise de inteligência de dados 2026
-          <div style={{ textAlign: "center" }}>Versão 65.0.0</div>
+          <div style={{ textAlign: "center" }}>Versão 66.0.0</div>
         </div>
         <button onClick={abrir} title="Painel do Supabase" style={{
           width:42, height:32, borderRadius:"18px 18px 8px 8px",
